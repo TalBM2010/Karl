@@ -1,37 +1,41 @@
 {
-  "updated": "2026-08-03 08:35 UTC",
+  "updated": "2026-08-03 09:05 UTC",
   "wave": 2,
-  "rounds": 3,
-  "overall": 7.3,
-  "note": "Cohesion pass landed: hero prominence fixed (tighter Diablo-IV framing, readable heart boxers, no white-triangle swing) with world/combat wins intact. Wave 2 now building the three systems the other reference frames show: loot & System loot-boxes, inventory + character sheet, and the Juicer boss battle.",
+  "rounds": 4,
+  "overall": 7.7,
+  "note": "Wave 2 landed: the Juicer boss battle (Frame A), the loot system with System loot boxes (Frame B), and the inventory + character sheet screens (Frames C/D) are all in and reading at the Diablo-IV bar. We now cover all four reference frames. Next: a whole-game cohesion pass (boss-fight camera pull-back is the top fix) + model/polish.",
   "latestShots": [
-    { "path": "captures/w1_cohesion/shot_01.png", "cap": "After cohesion — Carl prominent, heart boxers readable, Diablo-IV framing" },
-    { "path": "captures/w1_cohesion/shot_02.png", "cap": "Crystal-shard death burst + crit ring, world & bloom intact" }
+    { "path": "captures/w2_main/shot_03.png", "cap": "The Juicer boss — Mutant Whey jug, boss bar + affixes, big hit, loot beam (Frame A)" },
+    { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
+    { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" },
+    { "path": "captures/w2_char/shot_00.png", "cap": "Carl in the lit cavern with a loot glow — heart boxers, energy axe" }
   ],
   "strip": [
-    "captures/w1_cohesion/strip_00.jpg","captures/w1_cohesion/strip_01.jpg","captures/w1_cohesion/strip_02.jpg","captures/w1_cohesion/strip_03.jpg",
-    "captures/w1_cohesion/strip_04.jpg","captures/w1_cohesion/strip_05.jpg","captures/w1_cohesion/strip_06.jpg","captures/w1_cohesion/strip_07.jpg",
-    "captures/w1_cohesion/strip_08.jpg","captures/w1_cohesion/strip_09.jpg","captures/w1_cohesion/strip_10.jpg","captures/w1_cohesion/strip_11.jpg",
-    "captures/w1_cohesion/strip_12.jpg","captures/w1_cohesion/strip_13.jpg","captures/w1_cohesion/strip_14.jpg","captures/w1_cohesion/strip_15.jpg"
+    "captures/w2_main/strip_00.jpg","captures/w2_main/strip_01.jpg","captures/w2_main/strip_02.jpg","captures/w2_main/strip_03.jpg",
+    "captures/w2_main/strip_04.jpg","captures/w2_main/strip_05.jpg","captures/w2_main/strip_06.jpg","captures/w2_main/strip_07.jpg",
+    "captures/w2_main/strip_08.jpg","captures/w2_main/strip_09.jpg","captures/w2_main/strip_10.jpg","captures/w2_main/strip_11.jpg",
+    "captures/w2_main/strip_12.jpg","captures/w2_main/strip_13.jpg"
   ],
   "pieces": [
     { "name": "Environment & floor depth", "status": "winning", "score": 8.0, "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields" },
     { "name": "Lighting & color grade / post-fx", "status": "winning", "score": 8.0, "note": "EffectComposer bloom + ACES + vignette; moody & cinematic" },
+    { "name": "Character sheet (Frame D)", "status": "winning", "score": 8.5, "note": "attributes, OFFENSE/DEFENSE/UTILITY, paragon, equipment, metrics — faithful" },
+    { "name": "Inventory (Frame C)", "status": "winning", "score": 8.0, "note": "rarity grid + star ranks + paperdoll + currency row" },
+    { "name": "Boss battle — the Juicer (Frame A)", "status": "winning", "score": 8.0, "gap": "at melee camera his head crops — needs a boss-fight camera pull-back" },
     { "name": "Combat feel & VFX & damage numbers", "status": "winning", "score": 7.5, "note": "big outlined rising numbers, impact flash, crit rings, shard death bursts" },
     { "name": "Broadcast HUD (orbs / feed / ticker / panels)", "status": "winning", "score": 7.5, "note": "reads as D4 broadcast" },
+    { "name": "Loot, drops & System loot boxes (Frame B)", "status": "winning", "score": 7.5, "note": "rarity beams, ground labels, gold piles, System loot boxes that pop open" },
     { "name": "Enemies (crystalline arachnids)", "status": "winning", "score": 7.0, "note": "faceted menacing crystal spiders" },
-    { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.0, "note": "cohesion pass: prominent, heart boxers read, weighty swing; model polish still possible" },
-    { "name": "Loot, drops & System loot boxes", "status": "building", "score": 0, "gap": "not built yet — rarity beams, ground labels, DCC System loot boxes, gold piles" },
-    { "name": "Inventory & character sheet", "status": "building", "score": 0, "gap": "not built yet — Frames C/D panels (stats, grid, equipment, currency)" },
-    { "name": "Boss battle — the Juicer", "status": "building", "score": 0, "gap": "not built yet — Frame A giant steroid boss, boss bar, telegraphs, rage phase" }
+    { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.0, "note": "prominent, heart boxers read; model polish + Donut visibility still open" }
   ],
   "log": [
-    { "t": "08:35", "tag": "WAVE 2", "c": "#12303f", "msg": "Launched 3 parallel builders on the missing systems: loot + System loot boxes, inventory + character sheet, and the Juicer boss. A plug-in API lets them attach without touching the game loop." },
-    { "t": "08:28", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass landed: hero prominence fixed (tighter D4 camera, Carl scaled, axe rebuilt so no swing blooms to a white wedge, boxers read), Donut enlarged, scale/color cohered — world & combat wins preserved. Overall 7.0 → 7.3." },
-    { "t": "08:10", "tag": "CRITIC r2", "c": "#3a2a12", "msg": "Integrated Wave 1 judged vs reference: world/lighting/combat WIN (~8); overall 4.2 → 7.0. Biggest gap named: hero prominence. Sent back." },
-    { "t": "07:58", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "World builder: EffectComposer bloom + ACES grade, emissive glow-pool ground, depth-banded crystal fields, atmospheric sightlines." },
-    { "t": "07:55", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Character builder: Carl rebuilt as a muscular barbarian (heart boxers + glowing energy axe), Donut with crown, faceted arachnids." },
-    { "t": "07:40", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Combat-VFX builder: big outlined damage numbers, hit sparks, crit rings, shard death bursts, punchier camera kick." },
-    { "t": "07:20", "tag": "FOUNDATION", "c": "#1a4a2f", "msg": "Running 3D build + auto-play capture harness + reference rubric live end-to-end." }
+    { "t": "09:05", "tag": "CRITIC r4", "c": "#3a2a12", "msg": "Wave 2 judged vs reference: Juicer boss ~8 (Frame A), character sheet ~8.5 (D), inventory ~8 (C), loot ~7.5 (B). Overall 7.3 → 7.7. We now cover all four reference frames. Top gap: boss-fight camera crop." },
+    { "t": "09:00", "tag": "INTEGRATE ✓", "c": "#1a4a2f", "msg": "Full Wave-2 build boots clean (errors:[]) with boss + loot + screens all live simultaneously; fixed a keypress-timing bug in the screen-capture harness." },
+    { "t": "08:52", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Boss builder: the Juicer — giant steroid boss with Mutant Whey jug + syringes, boss bar, red slam telegraphs, enrage phase, death burst." },
+    { "t": "08:48", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Screens builder: Frame-D character sheet + Frame-C inventory, c/i/Esc toggles over a dimmed game." },
+    { "t": "08:42", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Loot builder: rarity drop beams, ground labels, gold piles, DCC System loot boxes that pop open + auto-collect." },
+    { "t": "08:35", "tag": "WAVE 2", "c": "#12303f", "msg": "Launched 3 parallel builders on loot, screens, and the boss via a plug-in API — no game-loop collisions." },
+    { "t": "08:28", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #1: hero prominence fixed, scale/color cohered, world & combat wins preserved. 7.0 → 7.3." },
+    { "t": "08:10", "tag": "CRITIC r2", "c": "#3a2a12", "msg": "Wave 1: world/lighting/combat WIN (~8); overall 4.2 → 7.0." }
   ]
 }
