@@ -114,8 +114,8 @@ export function initEnvironment(scene, renderer){
     new THREE.MeshStandardMaterial({ map:diffuseTex,
       normalMap:normalTex, normalScale:new THREE.Vector2(0.9,0.9),
       roughnessMap:roughTex, roughness:1.0, metalness:0.32,
-      emissiveMap:emissiveTex, emissive:0xffffff, emissiveIntensity:1.2,
-      color:0x6b7a86, envMapIntensity:0.6 }));
+      emissiveMap:emissiveTex, emissive:0xffffff, emissiveIntensity:1.35,
+      color:0x6b7a86, envMapIntensity:0.28 }));
   ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 
   // ------------------------------------------------------- crystals + colored glow
@@ -148,10 +148,10 @@ export function initEnvironment(scene, renderer){
       // opaque keeps clean depth-testing). emissive stays moderate so the shard reads as a
       // COLORED gem (hue visible) and bloom only adds a bright halo, not a blown-out blade.
       const mat=new THREE.MeshPhysicalMaterial({ color:hue, emissive:hue,
-        emissiveIntensity:rand(0.6,1.05), roughness:0.08, metalness:0.0,
-        ior:1.7, specularIntensity:1.0, envMapIntensity:1.4,
-        clearcoat:1.0, clearcoatRoughness:0.12,
-        sheen:0.6, sheenColor:new THREE.Color(hue).lerp(new THREE.Color(0xffffff),0.5),
+        emissiveIntensity:rand(1.7,2.5), roughness:0.1, metalness:0.0,
+        ior:1.7, specularIntensity:0.85, envMapIntensity:0.22,
+        clearcoat:0.5, clearcoatRoughness:0.18,
+        sheen:0.4, sheenColor:new THREE.Color(hue).lerp(new THREE.Color(0xffffff),0.4),
         flatShading:true });
       const m=new THREE.Mesh(crystalGeo, mat);
       const tall=rand(1.0,1.9); // chunky spires, a few taller
@@ -198,9 +198,9 @@ export function initEnvironment(scene, renderer){
   // hero playfield so they never block click-to-move or crowd Carl.
   const rockGeo=new THREE.IcosahedronGeometry(1, 0); // faceted boulder
   const rockMats=[
-    new THREE.MeshStandardMaterial({ color:0x3a4a55, roughness:0.95, metalness:0.05, flatShading:true, envMapIntensity:0.5 }),
-    new THREE.MeshStandardMaterial({ color:0x2c3b45, roughness:0.9,  metalness:0.08, flatShading:true, envMapIntensity:0.5 }),
-    new THREE.MeshStandardMaterial({ color:0x45525c, roughness:1.0,  metalness:0.04, flatShading:true, envMapIntensity:0.45 }),
+    new THREE.MeshStandardMaterial({ color:0x2b3742, roughness:0.95, metalness:0.05, flatShading:true, envMapIntensity:0.22 }),
+    new THREE.MeshStandardMaterial({ color:0x212d36, roughness:0.9,  metalness:0.08, flatShading:true, envMapIntensity:0.22 }),
+    new THREE.MeshStandardMaterial({ color:0x333f49, roughness:1.0,  metalness:0.04, flatShading:true, envMapIntensity:0.2  }),
   ];
   for(let i=0;i<46;i++){
     const a=rand(0,6.28), r=rand(8,60);

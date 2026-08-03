@@ -52,6 +52,31 @@ boulders adding depth, and the moody vignette framing the hero.
 - **Screens** — `C` opens the full Character Dossier (OFFENSE/DEFENSE/UTILITY, equipment,
   Paragon, play-time); `errors:[]`.
 
+## Mood-restoration pass (post-review)
+The first pass kept the IBL/postFX infrastructure but let the neutral RoomEnvironment IBL set
+the scene brightness, which washed the deep blacks and desaturated the crystals to grey — a mood
+regression vs the reference (`captures/w3_combat/shot_02.png`). Fixed while keeping all the
+IBL/postFX infrastructure (needed for real glTF models next):
+- **IBL is now subtle reflection fill only, not scene brightness.** three r160 has no
+  `scene.environmentIntensity`, so in `render.js` I traverse the `RoomEnvironment` BEFORE baking
+  the PMREM and crush its emissive area-lights + point light to ~16% and tint them deep
+  teal/indigo (`0x2b5a72`). Blacks stay deep; the dark directional key + colored crystal point
+  lights drive the mood again, exactly as before.
+- **Crystals glow saturated again.** `emissiveIntensity` raised to `rand(1.7,2.5)` and
+  `envMapIntensity` dropped `1.4 → 0.22` (plus lower clearcoat/sheen) so the neutral IBL can no
+  longer desaturate them to grey — they read as saturated blue/purple gems and bloom. floors.js
+  emissive/color retint still drives per-floor hue.
+- **Darker, more cinematic grade.** Exposure `1.06 → 0.92`; vignette strengthened
+  (`offset 0.95→1.15`, `darkness 1.12→1.35`) so the corners crush toward black.
+- **Ground + boulders** kept their normal/roughness maps and PBR, just with `envMapIntensity`
+  pulled down (ground `0.6→0.28`, rocks `~0.5→~0.2`) and darker rock albedos to sit in the gloom.
+
+Re-verified with a **clean, non-overlay** gameplay frame (`captures/mood2/strip_00.jpg`, Floor 1
+combat): deep blacks, saturated purple crystal-arachnids + pink/magenta crystal spires glowing
+with bloom, the Juicer + Carl three-dimensionally lit (subtle IBL form-fill the flat reference
+lacked). Reads at least as moody as `w3_combat/shot_02` while the PBR surfaces clearly benefit
+from IBL. `errors:[]` on the full run.
+
 ## Performance note / tradeoff
 Real `transmission`/refraction on crystals was deliberately **not** used: a single transmissive
 material forces three's per-frame transmission scene pass, which is prohibitively slow under the

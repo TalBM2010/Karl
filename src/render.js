@@ -33,12 +33,32 @@ export function initRender(renderer, scene, camera){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25) * RES_SCALE);
   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  // ---- IMAGE-BASED LIGHTING: bake RoomEnvironment into a PMREM cube for scene.environment.
-  //      Gives all PBR materials real specular reflections + soft ambient (no HDRI asset needed).
+  // ---- IMAGE-BASED LIGHTING: bake a DARKENED, COOL-TINTED RoomEnvironment into a PMREM cube
+  //      for scene.environment. This three r160 has no scene.environmentIntensity, so instead of
+  //      a bright neutral studio (which washed the blacks and desaturated the crystals to grey),
+  //      we scale the room's emissive area-lights + point light WAY down and tint them deep
+  //      teal/indigo BEFORE baking. Result: scene.environment acts only as subtle, cool PBR
+  //      reflection fill — the dark key light + colored point lights still own the mood, blacks
+  //      stay deep. Boulders/ground/crystals get real reflections without a studio wash.
+  const room = new RoomEnvironment();
+  const IBL_GAIN = 0.16;                       // crush the IBL brightness (was effectively 1.0)
+  const IBL_TINT = new THREE.Color(0x2b5a72);  // deep teal/indigo cast on the reflections
+  room.traverse((o)=>{
+    const m = o.material;
+    if(!m) return;
+    if(m.isMeshBasicMaterial){                 // the emissive "area light" panels
+      m.color.multiplyScalar(IBL_GAIN); m.color.multiply(IBL_TINT).multiplyScalar(2.0);
+    } else if(m.isMeshStandardMaterial){       // room + box surfaces (bounce)
+      m.color.lerp(IBL_TINT, 0.5).multiplyScalar(0.5);
+    }
+  });
+  room.traverse((o)=>{ if(o.isPointLight){ o.intensity *= IBL_GAIN; o.color.copy(IBL_TINT); } });
+
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
-  const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+  const envRT = pmrem.fromScene(room, 0.04);
   scene.environment = envRT.texture;
+  room.dispose && room.dispose();
   // NOTE: scene.background is a tintable Color owned by env.js/floors.js — we do NOT touch it,
   // only scene.environment (the IBL source). Keeping them separate preserves the floor retints.
 
@@ -59,10 +79,11 @@ export function initRender(renderer, scene, camera){
   const fxaa = new ShaderPass(FXAAShader);
   composer.addPass(fxaa);
 
-  // Moody vignette last: deepen + frame the corners so blacks stay rich, hero pops.
+  // Moody vignette last: strong, cinematic darkening that crushes the corners toward black so
+  // the frame reads like the reference cavern (deep blacks, hero pops) — not a bright studio.
   const vignette = new ShaderPass(VignetteShader);
-  vignette.uniforms.offset.value = 0.95;
-  vignette.uniforms.darkness.value = 1.12;
+  vignette.uniforms.offset.value = 1.15;
+  vignette.uniforms.darkness.value = 1.35;
   composer.addPass(vignette);
 
   function applyFxaaResolution(){
