@@ -1,13 +1,13 @@
 {
-  "updated": "2026-08-03 12:20 UTC",
+  "updated": "2026-08-03 13:00 UTC",
   "wave": 5,
-  "rounds": 9,
-  "overall": 8.6,
-  "note": "VISUAL OVERHAUL underway. Decision: stay on three.js/WebGL (it's the only platform our auto-capture critic loop can drive here; Unity/Unreal can't render headless in this container) — the real lever is ASSETS + pipeline, not the engine. Confirmed this environment can pull real rigged glTF models + HDRIs, and proved a skinned model + image-based lighting + real bloom renders clean headless — a night-and-day fidelity jump. Now rebuilding on that: IBL + post-FX pipeline first, then real character/creature models (Hybrid: Carl/Donut/Juicer keep their identity on real rigged bases).",
+  "rounds": 10,
+  "overall": 8.8,
+  "note": "VISUAL OVERHAUL, stage 1 landed. Render pipeline rebuilt on three.js with real image-based lighting (PMREM) + a real post-FX stack (UnrealBloom + FXAA + ACES + vignette). First IBL attempt washed out the mood — the critic caught it and sent it back; the fix keeps IBL only as subtle reflection fill so the dark cavern + glowing crystals + deep blacks return, while boss/ground now get real PBR form-lighting. Stage 2 in flight: testing Carl rebuilt on a REAL rigged glTF skeleton (skin + heart boxers + axe on the hand bone, smooth skeletal idle/walk/run) — to be A/B-judged vs the procedural Carl.",
   "latestShots": [
-    { "path": "captures/assettest/shot_01.png", "cap": "PROOF: a real rigged glTF model under image-based lighting + bloom — the fidelity tier we're moving to (vs primitives)" },
-    { "path": "captures/w4_main/shot_00.png", "cap": "Current build: 'FLOOR 1 — THE CRAWL' System floor-intro (book order)" },
-    { "path": "captures/final_verify/shot_05.png", "cap": "Current build: loot-box ceremony reward reveal" },
+    { "path": "captures/mood2/strip_00.jpg", "cap": "Render overhaul: moody cavern + IBL/PBR form-lighting on the Juicer, glowing crystals restored" },
+    { "path": "captures/assettest/shot_01.png", "cap": "The fidelity tier real rigged glTF models bring (proof render)" },
+    { "path": "captures/w4_main/shot_00.png", "cap": "'FLOOR 1 — THE CRAWL' System floor-intro (book order)" },
     { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
     { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
   ],
@@ -33,7 +33,10 @@
     { "name": "Loot-box opening ceremony (reward mechanism)", "status": "winning", "score": 8.0, "note": "charge → burst → rarity-flourished reward card + CLAIM; on-theme System voice" }
   ],
   "log": [
-    { "t": "12:20", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Visual-overhaul wave launched: render-pipeline builder adding image-based lighting (PMREM/RoomEnvironment) + a real post-processing stack (UnrealBloom + SSAO + FXAA + ACES) to lift the whole scene, ahead of swapping in real glTF characters." },
+    { "t": "13:00", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Stage 2 launched: testing Carl on a real rigged glTF skeleton (Xbot base) — skin + heart boxers + cyan axe bound to the hand bone, skeletal idle/walk/run. Will A/B against the procedural Carl and keep whichever reads better in-scene." },
+    { "t": "12:55", "tag": "CRITIC r10", "c": "#3a2a12", "msg": "Render overhaul VERIFIED after one send-back: moodier than before AND PBR surfaces now benefit from image-based lighting. Overall 8.6 → 8.8. Committed." },
+    { "t": "12:40", "tag": "SEND-BACK", "c": "#4a2a1a", "msg": "First IBL attempt regressed the mood (too bright/flat, crystals desaturated). Critic sent it back with old-vs-new frames; builder restored deep blacks + glowing crystals while keeping IBL as reflection fill." },
+    { "t": "12:20", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Render-pipeline builder: image-based lighting (PMREM/RoomEnvironment) + real post stack (UnrealBloom + FXAA + ACES + vignette)." },
     { "t": "12:10", "tag": "PIPELINE ✓", "c": "#1a4a2f", "msg": "De-risked the approach: fetched real rigged glTF models (Soldier/Xbot/Robot/Fox) + HDRIs from the one reachable host, vendored the glTF/HDRI/postFX loaders, and proved a skinned model + IBL + bloom renders clean headless. Committed the asset pipeline." },
     { "t": "12:00", "tag": "DECISION", "c": "#12303f", "msg": "User: 'make the visuals much better — maybe a different platform?' → Verdict: keep three.js (only engine our critic loop can drive headless here); the lever is real assets + pipeline. Hybrid chosen: Carl/Donut/Juicer keep their identity on real rigged bases." },
     { "t": "10:55", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #4: loot-box ceremony now dims the game cleanly behind the reward card; floor-intro / ceremony / screens gated so overlays never stack. 8.5 → 8.6." },
