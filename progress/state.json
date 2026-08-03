@@ -1,19 +1,20 @@
 {
-  "updated": "2026-08-03 10:05 UTC",
+  "updated": "2026-08-03 10:32 UTC",
   "wave": 4,
-  "rounds": 7,
-  "overall": 8.4,
-  "note": "Wave 3 + cohesion complete: abilities, sharper models, and a skill-bar that reads Diablo-IV-clean during cooldowns. We match all four reference frames at ~8.4/10 and hold up in motion. Wave 4 turns to the books' content 'according to its order': the floor progression (Floor 1 → the Over City) + the System loot-box OPENING ceremony (the reward mechanism).",
+  "rounds": 8,
+  "overall": 8.5,
+  "note": "Wave 4 landed: the books' floor progression (Floor 1 'The Crawl' → 'The Bramble' → 'The Iron Tangle / Over City') with dramatic System floor-intro announcements + per-floor scene retints, and the System loot-box OPENING ceremony (charge → burst → rarity-flourished reward card). The game now spans world, combat, abilities, boss, loot + reward ceremony, inventory + character sheet, AND book-order floor progression — holding up in motion.",
   "latestShots": [
-    { "path": "captures/w3_combat/shot_02.png", "cap": "Abilities + readable skill-bar cooldowns, aura on Carl, veiny Juicer (Wave 3 final)" },
-    { "path": "captures/w3_main/shot_05.png", "cap": "Aether Nova shockwave + war-cry rune, glowing-vein Juicer" },
+    { "path": "captures/w4_main/shot_00.png", "cap": "Floor-intro: 'FLOOR 1 — THE CRAWL' System announcement w/ viewer hype (book order)" },
+    { "path": "captures/w4_main/shot_06.png", "cap": "Loot-box ceremony reward card: 'Signet of the Showrunner · Rare' + CLAIM" },
+    { "path": "captures/w3_combat/shot_02.png", "cap": "Combat: abilities + readable skill-bar cooldowns, veiny Juicer" },
     { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
     { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
   ],
   "strip": [
-    "captures/w3_main/strip_00.jpg","captures/w3_main/strip_01.jpg","captures/w3_main/strip_02.jpg","captures/w3_main/strip_03.jpg",
-    "captures/w3_main/strip_04.jpg","captures/w3_main/strip_05.jpg","captures/w3_main/strip_06.jpg","captures/w3_main/strip_07.jpg",
-    "captures/w3_main/strip_08.jpg","captures/w3_main/strip_09.jpg","captures/w3_main/strip_10.jpg","captures/w3_main/strip_11.jpg"
+    "captures/w4_main/strip_02.jpg","captures/w4_main/strip_03.jpg","captures/w4_main/strip_04.jpg","captures/w4_main/strip_05.jpg",
+    "captures/w4_main/strip_06.jpg","captures/w4_main/strip_07.jpg","captures/w4_main/strip_08.jpg","captures/w4_main/strip_09.jpg",
+    "captures/w4_main/strip_10.jpg","captures/w4_main/strip_11.jpg","captures/w4_main/strip_12.jpg","captures/w4_main/strip_13.jpg"
   ],
   "pieces": [
     { "name": "Environment & floor depth", "status": "winning", "score": 8.0, "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields" },
@@ -28,11 +29,15 @@
     { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.5, "note": "prominent, heart boxers read, Donut now clearly visible; model fidelity still improvable" },
     { "name": "Skill / ability VFX (Frame B aether)", "status": "winning", "score": 8.5, "note": "5 auto-firing abilities + aether aura + live action-bar cooldowns; combat reads powered-up in motion" },
     { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "winning", "score": 7.5, "note": "sharper — Juicer veins, Carl muscle/face, gem spiders; AAA sculpt fidelity is the honest ceiling" },
-    { "name": "Floor progression (books' order)", "status": "building", "score": 0, "gap": "one level so far — build the floor sequence (Floor 1 ruins → Over City) + floor-intro transitions" },
-    { "name": "Loot-box opening ceremony (reward mechanism)", "status": "building", "score": 0, "gap": "boxes drop but don't have the dramatic DCC open-and-reveal ceremony yet" }
+    { "name": "Floor progression (books' order)", "status": "winning", "score": 8.5, "note": "Floor 1 Crawl → Bramble → Iron Tangle w/ System floor-intros + per-floor retints" },
+    { "name": "Loot-box opening ceremony (reward mechanism)", "status": "winning", "score": 8.0, "note": "charge → burst → rarity-flourished reward card + CLAIM; on-theme System voice" }
   ],
   "log": [
-    { "t": "10:05", "tag": "WAVE 4", "c": "#12303f", "msg": "Turning to the books' content 'according to its order': floor progression (Floor 1 → the Over City) + the System loot-box opening ceremony (reward reveal)." },
+    { "t": "10:32", "tag": "CRITIC r8", "c": "#3a2a12", "msg": "Wave 4 judged: floor progression ~8.5 (DCC System floor-intros + retinted floors, book order), loot-box ceremony ~8 (dramatic reward reveal). Overall 8.4 → 8.5. Next: whole-game cohesion pass to smooth overlay layering." },
+    { "t": "10:30", "tag": "INTEGRATE ✓", "c": "#1a4a2f", "msg": "Full Wave-4 build boots clean (errors:[]) — floor-intro announcements, retinted floors, and the loot-box opening ceremony all live alongside combat/boss/HUD." },
+    { "t": "10:22", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Floors builder: Floor 1 'The Crawl' → 'The Bramble' → 'The Iron Tangle' with System floor-intro screens + per-floor scene retints + objective updates." },
+    { "t": "10:18", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Loot-box builder: System opening ceremony — box charge/shake, rarity burst, flying reward card with stat lines + CLAIM." },
+    { "t": "10:05", "tag": "WAVE 4", "c": "#12303f", "msg": "Turning to the books' content 'according to its order': floor progression + the System loot-box opening ceremony." },
     { "t": "10:02", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #3: skill-bar icons now read clearly through cooldown sweeps (Diablo-IV dimmed-icon + wipe + timer); cleave bloom trimmed so Carl stays visible; colors harmonized. Wins intact. 8.3 → 8.4." },
     { "t": "09:48", "tag": "CRITIC r6", "c": "#3a2a12", "msg": "Wave 3 judged vs reference: abilities ~8.5 (Frame-B swirling aether now firing in combat), models ~7.5 (veiny Juicer, defined Carl, gem arachnids). Overall 8.0 → 8.3." },
     { "t": "09:25", "tag": "WAVE 3", "c": "#12303f", "msg": "Launched builders on the two honest remaining gaps: spectacular skill/ability VFX in combat, and a model-fidelity polish on Carl + the Juicer + arachnids." },
