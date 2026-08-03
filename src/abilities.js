@@ -25,11 +25,14 @@ export function init(api){
   (function injectStyle(){ if(document.getElementById('abil-cd-style')) return;
     const s=document.createElement('style'); s.id='abil-cd-style';
     s.textContent=`
-    #slots .slot.cooling .cd{ background:conic-gradient(rgba(2,7,12,.9) var(--a,0deg), rgba(90,210,255,.06) 0) !important; }
+    /* Diablo-IV cooldown read: a SEMI-transparent dark wedge sweeps over the slot so the (dimmed)
+       skill icon stays clearly visible underneath, with the numeric timer on top — never a black hole. */
+    #slots .slot.cooling .cd{ background:conic-gradient(rgba(4,10,16,.55) var(--a,0deg), rgba(90,210,255,.05) 0) !important; }
+    #slots .slot.cooling .ic{ filter:brightness(.9) saturate(.92); }
     #slots .slot.cooling{ outline:1px solid rgba(90,205,255,.55); outline-offset:-1px; box-shadow:0 0 10px rgba(80,200,255,.35); }
     #slots .slot .cdnum{ position:absolute; inset:0; display:none; align-items:center; justify-content:center;
       font:900 15px/1 "Arial Black","Arial Bold",Impact,sans-serif; color:#eafaff; z-index:3; pointer-events:none;
-      text-shadow:0 0 7px #4fe6ff, 0 1px 2px #000, 0 0 2px #000; }
+      text-shadow:0 0 7px #4fe6ff, 0 1px 2px #000, 0 0 3px #000, 0 -1px 2px #000; }
     #slots .slot.cooling .cdnum{ display:flex; }`;
     (document.head||document.documentElement).appendChild(s); })();
   // add a numeric-timer node to each slot (behaviour we own; DOM structure of the bar is untouched otherwise)
@@ -115,8 +118,8 @@ export function init(api){
   // ---------------------------------------------------------------- ability spawners
   function spawnCleave(){
     const g=new THREE.Group(); g.position.set(hero.pos.x, 0.16, hero.pos.z); g.rotation.y=hero.face;
-    const m1=addMat(CYAN, 0.95, null, THREE.DoubleSide);
-    const m2=addMat(PALE, 0.9,  null, THREE.DoubleSide);
+    const m1=addMat(CYAN, 0.85, null, THREE.DoubleSide);
+    const m2=addMat(PALE, 0.55, null, THREE.DoubleSide);   // trimmed so the crescent stays cyan-cored (not white-hot on Carl)
     const a1=new THREE.Mesh(arcGeo, m1); a1.rotation.x=-Math.PI/2;
     const a2=new THREE.Mesh(arcGeo, m2); a2.rotation.x=-Math.PI/2; a2.scale.setScalar(0.86);
     g.add(a1); g.add(a2); scene.add(g);
@@ -125,7 +128,7 @@ export function init(api){
       g.position.set(hero.pos.x, 0.16, hero.pos.z);       // stay stapled to Carl
       const sc=0.7+ease(a)*0.9; g.scale.setScalar(sc);
       g.rotation.z=(-0.9+a*1.8);                          // sweep the crescent across the front
-      m1.opacity=(1-a)*0.95; m2.opacity=(1-a)*0.9;
+      m1.opacity=(1-a)*0.85; m2.opacity=(1-a)*0.55;
     }});
   }
 
