@@ -24,7 +24,7 @@ export function buildCarl(){
   const skin=new THREE.MeshStandardMaterial({color:0xd79a63, roughness:.62, metalness:0});
   const skinDk=new THREE.MeshStandardMaterial({color:0xba7f4c, roughness:.6, metalness:0}); // shaded muscle
   const hairMat=new THREE.MeshStandardMaterial({color:0x241611, roughness:.95});
-  const whiteMat=new THREE.MeshStandardMaterial({color:0xf4f4f2, roughness:.8});
+  const whiteMat=new THREE.MeshStandardMaterial({color:0xe9e6dd, roughness:.85}); // warm off-white so bloom doesn't blow the boxers to a solid blob
   const heartMat=new THREE.MeshStandardMaterial({color:0xff3358, emissive:0xd61438, emissiveIntensity:1.1, roughness:.5});
 
   // ---- TORSO GROUP (bobbed by main.js; rest center y=1.5) ----------------
@@ -108,24 +108,26 @@ export function buildCarl(){
   // ---- GLOWING BLUE ENERGY BATTLE-AXE (child of right arm) ----------------
   const axe=new THREE.Group();
   const haftMat=new THREE.MeshStandardMaterial({color:0x2b1d12, roughness:.85});
-  const haft=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,2.0,8), haftMat); axe.add(haft);
-  const pommel=new THREE.Mesh(new THREE.SphereGeometry(.09,10,10), new THREE.MeshStandardMaterial({color:0x9fe6ff,emissive:0x3f9fff,emissiveIntensity:2.0,roughness:.3}));
-  pommel.position.y=-.9; axe.add(pommel);
-  // double-bit radiant blades — two big flared crescent energy bits flanking the head
-  const bladeMat=new THREE.MeshStandardMaterial({color:0xcbf2ff,emissive:0x52c0ff,emissiveIntensity:3.0,metalness:.2,roughness:.1,transparent:true,opacity:.9});
+  const haft=new THREE.Mesh(new THREE.CylinderGeometry(.05,.06,1.9,8), haftMat); axe.add(haft);
+  const pommel=new THREE.Mesh(new THREE.SphereGeometry(.085,10,10), new THREE.MeshStandardMaterial({color:0x8fd6ff,emissive:0x2f8fff,emissiveIntensity:1.7,roughness:.3}));
+  pommel.position.y=-.86; axe.add(pommel);
+  // double-bit head: compact, saturated-cyan flared blades. 4-seg (diamond edge) +
+  // thinned front-to-back so it reads as an AXE HEAD, never a flat white triangle when
+  // the swing turns it face-on. Saturated blue keeps bloom a cyan halo, not a white blob.
+  const bladeMat=new THREE.MeshStandardMaterial({color:0x5fc2ff,emissive:0x2a8fff,emissiveIntensity:1.8,metalness:.25,roughness:.16,transparent:true,opacity:.94,flatShading:true});
   for(const s of [-1,1]){
-    const bit=new THREE.Mesh(new THREE.CylinderGeometry(.66,.14,.13,3), bladeMat);
-    bit.position.set(.4*s,.92,0); bit.rotation.z=(Math.PI/2)*s; bit.rotation.x=Math.PI/2; bit.scale.set(1,1,1.5); axe.add(bit);
+    const bit=new THREE.Mesh(new THREE.ConeGeometry(.30,.56,4), bladeMat);
+    bit.position.set(.20*s,.9,0); bit.rotation.z=-(Math.PI/2.25)*s; bit.scale.set(1,1.05,.55); axe.add(bit);
   }
-  // bright energy core where the bits meet the haft
-  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.26,0), new THREE.MeshStandardMaterial({color:0xf0fbff,emissive:0x9fe2ff,emissiveIntensity:3.6,roughness:.08}));
-  core.position.y=.92; axe.add(core);
-  const glow=new THREE.PointLight(0x5ec0ff,5.5,9,2); glow.position.y=.92; axe.add(glow);
+  // bright energy core where the bits meet the haft (focal glow, dialed back from white)
+  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.16,0), new THREE.MeshStandardMaterial({color:0xbfeeff,emissive:0x79ceff,emissiveIntensity:2.3,roughness:.1}));
+  core.position.y=.9; axe.add(core);
+  const glow=new THREE.PointLight(0x5ec0ff,4.2,8,2); glow.position.y=.9; axe.add(glow);
   // seat the axe in the right hand, blade up and out for a heroic ready pose
-  axe.position.set(.03,-1.05,.12); axe.rotation.set(-.3,0,.4); armPivotR.add(axe);
+  axe.position.set(.03,-1.0,.12); axe.rotation.set(-.3,0,.4); armPivotR.add(axe);
 
   g.userData={armPivotR,armPivotL,legL,legR,axe,torso,head};
-  g.scale.setScalar(1.1); // extra heroic presence over the arachnids
+  g.scale.setScalar(1.22); // extra heroic presence — clearly larger than the arachnids
   g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
   return g;
 }
@@ -178,6 +180,7 @@ export function buildDonut(){
   gem.position.set(.32,.86,0); g.add(gem);
   const cg=new THREE.PointLight(0xffcf6a,2.6,4.5,2); cg.position.set(.32,.82,0); g.add(cg);
 
+  g.scale.setScalar(1.15); // read as a cat companion beside Carl, still small next to him
   g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
   return g;
 }
