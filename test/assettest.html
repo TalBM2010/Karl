@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#0a0f14;overflow:hidden}#c{position:fixed;inset:0}</style></head>
+<body><div id="c"></div>
+<script type="importmap">{ "imports": { "three": "../vendor/three.module.js", "three/addons/": "../vendor/addons/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(1);
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1;
+renderer.shadowMap.enabled=true; document.getElementById('c').appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0c1a24);
+scene.fog=new THREE.FogExp2(0x0c1a24,0.03);
+
+// image-based lighting from RoomEnvironment (no asset needed)
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+
+const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(5,10,7); key.castShadow=true;
+key.shadow.mapSize.set(1024,1024); scene.add(key);
+scene.add(new THREE.HemisphereLight(0x88bbff,0x222018,0.6));
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(50,50), new THREE.MeshStandardMaterial({color:0x33465a,roughness:.9,metalness:.1}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+const cam=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);
+cam.position.set(3,3,4.5); cam.lookAt(0,1.2,0);
+
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,cam));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.5,0.5,0.85));
+composer.addPass(new OutputPass());
+
+let mixer=null;
+new GLTFLoader().load('../assets/models/Soldier.glb',(gltf)=>{
+  const m=gltf.scene; m.traverse(o=>{if(o.isMesh){o.castShadow=true;}}); m.scale.setScalar(1.4); scene.add(m);
+  mixer=new THREE.AnimationMixer(m);
+  const walk=gltf.animations.find(a=>/walk/i.test(a.name))||gltf.animations[0];
+  if(walk) mixer.clipAction(walk).play();
+  window.__LOADED=true;
+  window.__anims=gltf.animations.map(a=>a.name);
+},undefined,(e)=>{ window.__ERR=String(e); });
+
+const clock=new THREE.Clock();
+function loop(){ const dt=clock.getDelta(); if(mixer)mixer.update(dt); composer.render(); requestAnimationFrame(loop); }
+window.__READY=true; loop();
+</script></body></html>
