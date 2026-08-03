@@ -341,7 +341,9 @@ export function init(api){
   // retry the moment the other overlay clears.
   function overlaysBusy(){
     const fi = document.getElementById('floor-intro');
-    if(fi && fi.classList.contains('on')) return true;
+    // .on = visible; data-busy also covers its 0.55s fade-out tail (set by floors.js) so we don't
+    // pop the ceremony up next to a still-fading announcement.
+    if(fi && (fi.classList.contains('on') || fi.dataset.busy==='1')) return true;
     const ks = document.getElementById('ks-root');
     if(ks && ks.classList.contains('open')) return true;
     return false;
@@ -483,14 +485,21 @@ export function init(api){
     wrap._claim=()=>{ if(active && cardShown){ t0 -= (T_END - (performance.now()/1000 - t0)) - 0.55; } };
   }
 
-  function dismiss(){
+  // immediate=true tears the ceremony down synchronously (no fade) — used when a floor-intro
+  // takes over the frame, so nothing lingers stacked underneath it for even one painted frame.
+  function dismiss(immediate){
     if(!active) return;
     root.classList.remove('on');
     const gone=dom;
-    setTimeout(()=>{ if(gone && gone.parentNode) gone.parentNode.removeChild(gone); }, 400);
     cancelAnimationFrame(raf); raf=0;
-    // let particles finish drawing out during fade, then clear
-    setTimeout(()=>{ shards.length=0; rays=null; ctx.clearRect(0,0,cw,ch); }, 460);
+    if(immediate){
+      if(gone && gone.parentNode) gone.parentNode.removeChild(gone);
+      shards.length=0; rays=null; ctx.clearRect(0,0,cw,ch);
+    } else {
+      setTimeout(()=>{ if(gone && gone.parentNode) gone.parentNode.removeChild(gone); }, 400);
+      // let particles finish drawing out during fade, then clear
+      setTimeout(()=>{ shards.length=0; rays=null; ctx.clearRect(0,0,cw,ch); }, 460);
+    }
     dom=null; active=false;
   }
 
@@ -505,7 +514,7 @@ export function init(api){
   addEventListener('pointerdown', ()=>{ if(active && dom && dom._claim) dom._claim(); });
 
   // ---------------------------------------------------------------- expose API
-  api.lootbox={ open, get active(){ return active; } };
+  api.lootbox={ open, get active(){ return active; }, close(){ dismiss(true); } };
 
   // ---------------------------------------------------------------- auto demo
   if(isAuto){

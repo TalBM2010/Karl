@@ -126,9 +126,15 @@ export function init(api){
   document.body.appendChild(overlay);
 
   const $ = id => document.getElementById(id);
-  let hideTimer = null;
+  let hideTimer = null, busyTimer = null;
+  overlay.dataset.busy = '0';   // read by lootbox.js to avoid stacking overlays
 
   function showIntro(f){
+    // A full-screen floor-intro is the headline event and owns the frame: if a loot-box ceremony
+    // is mid-play, close it out first so the two never render stacked (the ceremony auto-cycles,
+    // it'll be back). Guarded because api.lootbox may not be registered yet on the very first floor.
+    if(api.lootbox && api.lootbox.active && typeof api.lootbox.close === 'function'){ api.lootbox.close(); }
+
     // tint the overlay's accent/glow toward the floor's crystal hue so the announcement itself
     // reads as "this floor" (cyan on 1... shifting warm/green/gold to match the world behind it).
     const acc = '#' + new THREE.Color(f.crystal).getHexString();
@@ -145,11 +151,17 @@ export function init(api){
       `<span class="who" style="color:${col}">${who}</span><span class="txt">${txt}</span></div>`).join('');
 
     overlay.classList.add('on');
-    clearTimeout(hideTimer);
+    overlay.dataset.busy = '1';                 // "a floor-intro owns the frame" — lootbox stands down
+    clearTimeout(hideTimer); clearTimeout(busyTimer);
     // ~3s on screen (longer in capture/demo so a slow-GL screenshot reliably lands on it):
     // hold, then fade out to gameplay.
     const hold = (arguments.length>1 && typeof arguments[1]==='number') ? arguments[1] : 2500;
-    hideTimer = setTimeout(()=> overlay.classList.remove('on'), hold);
+    hideTimer = setTimeout(()=>{
+      overlay.classList.remove('on');
+      // keep the "busy" flag through the 0.55s opacity fade-out so a ceremony can't pop up
+      // alongside the still-visible-but-fading announcement, then release the frame.
+      busyTimer = setTimeout(()=>{ overlay.dataset.busy = '0'; }, 650);
+    }, hold);
   }
 
   // ------------------------------------------------------------------ HUD objectives
