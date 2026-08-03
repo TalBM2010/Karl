@@ -26,14 +26,46 @@ export function init(api){
   const BOSS_HP    = 53000000;
   const BOSS_SCALE = 2.45;                      // enormous — clearly dwarfs Carl, face still in-frame
 
+  // ---------------------------------------------------------------- procedural FLESH DETAIL maps
+  // (generated in-code, no assets). A blotchy bumpMap gives the steroid-bloated skin a mottled,
+  // clammy micro-surface (never a smooth balloon); a branching vein EMISSIVE map makes engorged
+  // veins glow subsurface-red through the skin — and because it's the emissive channel, the
+  // existing hit-flash / enrage emissiveIntensity ramps make the veins PULSE brighter on damage.
+  function makeFleshMaps(){
+    const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
+    // ---- bump: mottled flushed flesh ----
+    g.fillStyle='#8a8a8a'; g.fillRect(0,0,256,256);
+    for(let i=0;i<70;i++){ const r=8+Math.random()*30; g.beginPath();
+      g.fillStyle=`rgba(${150+Math.random()*80|0},${150+Math.random()*80|0},${160},0.28)`;
+      g.arc(Math.random()*256,Math.random()*256,r,0,7); g.fill(); }
+    for(let i=0;i<9000;i++){ const v=70+Math.random()*90|0; g.fillStyle=`rgb(${v},${v},${v})`; g.fillRect(Math.random()*256|0,Math.random()*256|0,1,1); }
+    const bump=new THREE.CanvasTexture(c); bump.wrapS=bump.wrapT=THREE.RepeatWrapping; bump.repeat.set(1.5,1.5);
+    // ---- emissive veins: dim-red base (keeps the flushed subsurface glow) + bright branching veins ----
+    const c2=document.createElement('canvas'); c2.width=c2.height=256; const v=c2.getContext('2d');
+    v.fillStyle='#241012'; v.fillRect(0,0,256,256); // dim base -> faint all-over flush
+    v.lineCap='round';
+    function branch(x,y,ang,len,w){ if(len<6||w<0.6) return;
+      const nx=x+Math.cos(ang)*len, ny=y+Math.sin(ang)*len;
+      v.strokeStyle=`rgba(${210+Math.random()*45|0},${60+Math.random()*40|0},${60+Math.random()*30|0},0.9)`;
+      v.lineWidth=w; v.beginPath(); v.moveTo(x,y); v.lineTo(nx,ny); v.stroke();
+      branch(nx,ny,ang+(Math.random()-.5)*1.0,len*.72,w*.7);
+      if(Math.random()<.6) branch(nx,ny,ang+(Math.random()-.5)*1.6,len*.6,w*.6);
+    }
+    for(let i=0;i<10;i++) branch(Math.random()*256,Math.random()*256,Math.random()*7,20+Math.random()*22,3+Math.random()*2);
+    const veinTex=new THREE.CanvasTexture(c2); veinTex.wrapS=veinTex.wrapT=THREE.RepeatWrapping; veinTex.repeat.set(1.4,1.4);
+    return {bump, veinTex};
+  }
+  const FLESH=makeFleshMaps();
+
   // ---------------------------------------------------------------- materials (shared refs so
   // enrage can tint them, hits can flash them). Flushed, veiny, steroid-red skin.
   const SKIN0  = new THREE.Color(0xc0564a);      // base flushed skin
   const SKIN_RAGE = new THREE.Color(0xe23524);   // enraged: angrier red
-  const skin   = new THREE.MeshStandardMaterial({color:SKIN0.clone(), roughness:.5, metalness:0, emissive:0x611512, emissiveIntensity:.18});
-  const skinDk = new THREE.MeshStandardMaterial({color:0x9c3a2f, roughness:.55, metalness:0, emissive:0x3a0d0b, emissiveIntensity:.15});
-  const veinMat= new THREE.MeshStandardMaterial({color:0x6e1622, roughness:.4, metalness:.1, emissive:0x36030c, emissiveIntensity:.5});
-  const skinMats=[skin, skinDk];
+  const skin   = new THREE.MeshStandardMaterial({color:SKIN0.clone(), roughness:.52, metalness:0, emissive:0xb01818, emissiveMap:FLESH.veinTex, emissiveIntensity:.18, bumpMap:FLESH.bump, bumpScale:.03});
+  const skinDk = new THREE.MeshStandardMaterial({color:0x9c3a2f, roughness:.6, metalness:0, emissive:0x7a1010, emissiveMap:FLESH.veinTex, emissiveIntensity:.15, bumpMap:FLESH.bump, bumpScale:.026});
+  const skinLt = new THREE.MeshStandardMaterial({color:0xd66a54, roughness:.46, metalness:0, emissive:0xb01818, emissiveMap:FLESH.veinTex, emissiveIntensity:.16, bumpMap:FLESH.bump, bumpScale:.03}); // pumped muscle crown
+  const veinMat= new THREE.MeshStandardMaterial({color:0x6e1622, roughness:.4, metalness:.1, emissive:0x8a0a1a, emissiveIntensity:.7}); // raised surface tubes
+  const skinMats=[skin, skinDk, skinLt];
 
   // ---------------------------------------------------------------- MUTANT WHEY label texture
   function makeLabelTex(){
@@ -53,9 +85,17 @@ export function init(api){
   // ---------------------------------------------------------------- helpers
   const cap = (r,l,mat)=>new THREE.Mesh(new THREE.CapsuleGeometry(r,l,5,12), mat);
   const sph = (r,mat)=>new THREE.Mesh(new THREE.SphereGeometry(r,14,12), mat);
-  function vein(parent, x,y,z, rx,ry,rz, len, thick=.03){
-    const v=new THREE.Mesh(new THREE.CylinderGeometry(thick,thick,len,5), veinMat);
-    v.position.set(x,y,z); v.rotation.set(rx,ry,rz); parent.add(v);
+  function vein(parent, x,y,z, rx,ry,rz, len, thick=.035){
+    // bulging surface vein: a slightly kinked two-segment tube reads engorged, not a straight rod
+    const v=new THREE.Group(); v.position.set(x,y,z); v.rotation.set(rx,ry,rz); parent.add(v);
+    const a=new THREE.Mesh(new THREE.CylinderGeometry(thick,thick*.85,len*.55,6), veinMat); a.position.y=len*.25; v.add(a);
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(thick*.85,thick*.6,len*.55,6), veinMat); b.position.set(thick*1.4,-len*.28,0); b.rotation.z=.4; v.add(b);
+    return v;
+  }
+  // dark shadow crevice between two muscle bellies (fakes an AO cut line)
+  function groove(parent,x,y,z,w,h,d,rx=0,ry=0,rz=0){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), skinDk);
+    m.position.set(x,y,z); m.rotation.set(rx,ry,rz); parent.add(m); return m;
   }
 
   // ---------------------------------------------------------------- syringes jabbed into flesh
@@ -100,17 +140,22 @@ export function init(api){
   function buildArm(zSign){
     const pivot=new THREE.Group(); pivot.position.set(0,.95,.66*zSign);
     const delt=sph(.44, skin); delt.scale.set(1,1.15,1.05); pivot.add(delt);
-    const deltCap=sph(.3, skinDk); deltCap.position.set(0,.28,0); pivot.add(deltCap);
+    const deltCap=sph(.3, skinLt); deltCap.position.set(.05,.28,0); pivot.add(deltCap); // lit shoulder cap
+    const deltRear=sph(.26, skinDk); deltRear.position.set(-.22,.12,0); deltRear.scale.set(.8,1,1); pivot.add(deltRear);
     const upper=cap(.32,.5,skin); upper.position.y=-.5; upper.scale.set(1,1,1.1); pivot.add(upper);
-    const bicep=sph(.3, skinDk); bicep.position.set(.12,-.42,0); bicep.scale.set(.9,1.1,.9); pivot.add(bicep);
-    vein(pivot,.28,-.42,.05, 0,0,.5,.5); vein(pivot,.24,-.6,-.1, .3,0,.2,.4);
+    // split bicep peak (lit) from tricep horseshoe (shaded), grooved between = cut upper arm
+    const bicep=sph(.3, skinLt); bicep.position.set(.18,-.42,0); bicep.scale.set(.85,1.15,.9); pivot.add(bicep);
+    const tricep=sph(.28, skinDk); tricep.position.set(-.16,-.46,0); tricep.scale.set(.8,1.2,.9); pivot.add(tricep);
+    groove(pivot, .0,-.46,.32, .5,.55,.06, 0,0,0);
+    vein(pivot,.34,-.34,.08, 0,0,.5,.5); vein(pivot,.3,-.62,-.12, .3,0,.2,.42); vein(pivot,.28,-.5,.18, .1,0,.35,.4);
     // forearm on an elbow pivot
     const elbow=new THREE.Group(); elbow.position.y=-.98; pivot.add(elbow);
     const eJoint=sph(.27, skinDk); elbow.add(eJoint);
     const fore=cap(.27,.5,skin); fore.position.y=-.42; elbow.add(fore);
-    vein(elbow,.24,-.4,.08, 0,0,.35,.5); vein(elbow,.2,-.5,-.06, .2,0,.1,.42);
+    const brach=sph(.2,skinLt); brach.position.set(.16,-.28,.06); brach.scale.set(.7,1.3,.8); elbow.add(brach); // forearm muscle crown
+    vein(elbow,.28,-.34,.12, 0,0,.35,.5); vein(elbow,.24,-.54,-.08, .2,0,.1,.44); vein(elbow,.1,-.62,.2, .3,0,.15,.36);
     const fist=sph(.32, skin); fist.position.y=-.82; fist.scale.set(1,.95,1.05); elbow.add(fist);
-    const knuck=sph(.12, skinDk); knuck.position.set(.22,-.82,0); elbow.add(knuck);
+    for(let k=-1;k<=1;k++){ const knuck=sph(.09, skinLt); knuck.position.set(.24,-.78,k*.12); elbow.add(knuck); } // gnarled knuckles
     return { pivot, elbow, fist };
   }
 
@@ -121,12 +166,17 @@ export function init(api){
     for(const s of [-1,1]){
       const hip=new THREE.Group(); hip.position.set(0,1.35,.4*s); g.add(hip);
       const thigh=cap(.42,.6,skin); thigh.position.y=-.5; thigh.scale.set(1,1,1.05); hip.add(thigh);
-      const quad=sph(.34,skinDk); quad.position.set(.18,-.5,0); quad.scale.set(.8,1.2,.9); hip.add(quad);
+      // rectus femoris sweep (lit) + teardrop VMO (lit), split from the outer sweep by a groove
+      const quad=sph(.28,skinLt); quad.position.set(.24,-.42,0); quad.scale.set(.7,1.5,.9); hip.add(quad);
+      const vmo=sph(.2,skinLt); vmo.position.set(.28,-.82,.06); vmo.scale.set(.8,1,.9); hip.add(vmo);
+      const sweep=sph(.24,skin); sweep.position.set(-.14,-.5,0); sweep.scale.set(.7,1.3,.95); hip.add(sweep);
+      groove(hip, .05,-.6,.42, .06,.7,.06, 0,0,0);
       const knee=sph(.3,skinDk); knee.position.y=-1.0; hip.add(knee);
       const calf=cap(.32,.5,skin); calf.position.set(0,-1.45,-.06); calf.scale.set(1,1,1.15); hip.add(calf);
+      const gastroc=sph(.24,skinLt); gastroc.position.set(0,-1.35,-.1); gastroc.scale.set(1,1.4,.7); hip.add(gastroc); // calf diamond
       const foot=new THREE.Mesh(new THREE.BoxGeometry(.7,.3,1.0,1,1,1), skinDk);
       foot.position.set(.18,-1.95,.05); hip.add(foot);
-      vein(hip,.34,-.5,.1, 0,0,.2,.6,.04);
+      vein(hip,.4,-.5,.12, 0,0,.2,.6,.045); vein(hip,.3,-.85,.15, 0,0,.1,.4,.038);
     }
     // pelvis / trunks (shorts)
     const shortsMat=new THREE.MeshStandardMaterial({color:0x14141a, roughness:.7, emissive:0x050508, emissiveIntensity:.2});
@@ -138,39 +188,51 @@ export function init(api){
     // ---- TORSO GROUP (breathes + hunches). Children hunch with it. ----
     const tG=new THREE.Group(); tG.position.y=1.5; tG.rotation.z=-0.34; g.add(tG); // heavy forward hunch: head/shoulders loom over Carl
 
-    // gut / abs block
+    // gut / bloated ab block — lit blocky abs with a linea-alba + tendon grooves cut through
     const gut=cap(.6,.5,skin); gut.position.set(.08,.4,0); gut.scale.set(1.15,1,.95); tG.add(gut);
-    for(let r=0;r<3;r++) for(const s of [-1,1]){ const ab=sph(.17,skinDk);
-      ab.position.set(.12*s,.28-r*.26,.52); ab.scale.set(1,.85,.5); tG.add(ab); }
-    // huge barrel chest + pecs on +X (front)
+    for(let r=0;r<3;r++) for(const s of [-1,1]){ const ab=sph(.18,skinLt);
+      ab.position.set(.14*s,.28-r*.26,.52); ab.scale.set(1,.9,.55); tG.add(ab); }
+    groove(tG, .0,.24,.56, .05,.85,.09, 0,0,0);                                   // linea alba
+    for(let r=0;r<2;r++) groove(tG, .0,.15-r*.26,.56, .5,.05,.09, 0,0,0);          // tendinous ab lines
+    // huge barrel chest + separated pecs on +X (front)
     const chest=cap(.7,.55,skin); chest.position.set(0,1.05,0); chest.scale.set(1.35,1.05,1.1); chest.rotation.z=Math.PI/2; tG.add(chest);
-    for(const s of [-1,1]){ const pec=sph(.42,skin); pec.position.set(.42,1.02,.34*s); pec.scale.set(.9,.8,1); tG.add(pec);
-      const pecLo=sph(.2,skinDk); pecLo.position.set(.5,.78,.3*s); tG.add(pecLo); }
-    vein(tG,.62,1.1,.2, .4,0,.2,.6); vein(tG,.62,1.1,-.24, -.4,0,.2,.6); vein(tG,.55,.8,0, 0,0,0,.5);
+    for(const s of [-1,1]){ const pec=sph(.42,skinLt); pec.position.set(.42,1.05,.34*s); pec.scale.set(.9,.8,1); tG.add(pec);
+      const pecLo=sph(.24,skin); pecLo.position.set(.52,.78,.3*s); pecLo.scale.set(.9,.7,1); tG.add(pecLo); }
+    groove(tG, .5,1.0,0, .12,.6,.06, 0,0,0);                                       // sternum split between pecs
+    for(const s of [-1,1]) groove(tG, .5,.86,.34*s, .16,.05,.4, .3,0,0);           // under-pec fold
+    vein(tG,.64,1.14,.24, .4,0,.2,.55); vein(tG,.64,1.14,-.28, -.4,0,.2,.55); vein(tG,.58,.86,.18, 0,0,.1,.45);
+    vein(tG,.5,1.3,.1, .2,0,.1,.4,.04);
     // enormous traps rising toward the tiny head
-    for(const s of [-1,1]){ const trap=sph(.5,skin); trap.position.set(-.08,1.46,.42*s); trap.scale.set(.95,1,1.1); tG.add(trap); }
+    for(const s of [-1,1]){ const trap=sph(.5,skinLt); trap.position.set(-.06,1.48,.42*s); trap.scale.set(.95,1,1.1); tG.add(trap); }
+    groove(tG, -.02,1.5,0, .1,.5,.5, 0,0,0);                                       // neck-trap valley
     // upper back mass (-X)
     const back=cap(.62,.5,skinDk); back.position.set(-.4,1.0,0); back.scale.set(1,1.1,1.3); back.rotation.z=Math.PI/2; tG.add(back);
-    for(const s of [-1,1]){ const lat=sph(.4,skinDk); lat.position.set(-.3,.75,.4*s); lat.scale.set(.7,1.3,.9); tG.add(lat); }
+    for(const s of [-1,1]){ const lat=sph(.4,skin); lat.position.set(-.3,.75,.4*s); lat.scale.set(.7,1.3,.9); tG.add(lat); }
 
     // ---- NECK + TINY HEAD (sunk between the traps), angry face on +X ----
     const neck=new THREE.Mesh(new THREE.CylinderGeometry(.28,.42,.42,12), skin); neck.position.set(.14,1.8,0); neck.rotation.z=-.5; tG.add(neck);
     // tiny head jutting FORWARD off the hunched neck so the face reads from the iso cam
     const head=new THREE.Group(); head.position.set(.5,1.94,0); head.rotation.z=.25; tG.add(head);
     const skull=sph(.27,skin); skull.scale.set(1,1.02,.98); head.add(skull);
-    const jaw=sph(.22,skinDk); jaw.position.set(.16,-.14,0); jaw.scale.set(1,.85,.98); head.add(jaw);
-    // heavy angry brow ridge (angled down toward the nose)
-    for(const s of [-1,1]){ const brow=new THREE.Mesh(new THREE.BoxGeometry(.12,.1,.24), skinDk);
-      brow.position.set(.24,.11,.1*s); brow.rotation.z=-.55; brow.rotation.y=.25*s; head.add(brow); }
-    const nose=new THREE.Mesh(new THREE.BoxGeometry(.14,.12,.1), skinDk); nose.position.set(.31,.0,0); head.add(nose);
+    const jaw=new THREE.Mesh(new THREE.BoxGeometry(.34,.2,.4), skin); jaw.position.set(.18,-.15,0); jaw.scale.set(1,1,.98); head.add(jaw); // heavy square lantern jaw
+    for(const s of [-1,1]){ const cheek=sph(.11,skinLt); cheek.position.set(.2,.06,.16*s); cheek.scale.set(.8,.7,.7); head.add(cheek); } // jutting cheekbones
+    // heavy angry brow ridge (angled down toward the nose) — deeper scowl
+    for(const s of [-1,1]){ const brow=new THREE.Mesh(new THREE.BoxGeometry(.14,.12,.26), skinDk);
+      brow.position.set(.25,.13,.1*s); brow.rotation.z=-.6; brow.rotation.y=.28*s; head.add(brow); }
+    const scowl=new THREE.Mesh(new THREE.BoxGeometry(.05,.14,.06), skinDk); scowl.position.set(.3,.14,0); head.add(scowl); // furrowed glabella
+    const nose=new THREE.Mesh(new THREE.BoxGeometry(.16,.13,.12), skin); nose.position.set(.33,.0,0); nose.rotation.z=.15; head.add(nose); // busted flat nose
     // tiny furious glowing eyes
     for(const s of [-1,1]){ const eye=new THREE.Mesh(new THREE.SphereGeometry(.062,10,10),
         new THREE.MeshStandardMaterial({color:0xfff2a0, emissive:0xffbe18, emissiveIntensity:3.0})); eye.position.set(.29,.05,.1*s); head.add(eye); }
     // snarling open mouth + clenched teeth
     const mouth=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8), new THREE.MeshStandardMaterial({color:0x2a0808, roughness:.9}));
     mouth.position.set(.27,-.15,0); mouth.scale.set(.75,.7,1); head.add(mouth);
-    for(let i=-1;i<=1;i++){ for(const ty of [.05,-.09]){ const tooth=new THREE.Mesh(new THREE.BoxGeometry(.035,.06,.035),
-        new THREE.MeshStandardMaterial({color:0xf0ead6})); tooth.position.set(.33,-.11+ty,i*.055); head.add(tooth); } }
+    const toothMat=new THREE.MeshStandardMaterial({color:0xe8e0c8, roughness:.6});
+    for(let i=-1;i<=1;i++){ for(const ty of [.05,-.09]){ const tooth=new THREE.Mesh(new THREE.BoxGeometry(.035,.06,.035), toothMat);
+        tooth.position.set(.33,-.11+ty,i*.055); head.add(tooth); } }
+    // protruding lower fangs / snaggle canines
+    for(const s of [-1,1]){ const fang=new THREE.Mesh(new THREE.ConeGeometry(.028,.09,5), toothMat);
+      fang.position.set(.34,-.07,.06*s); head.add(fang); }
     // tiny buzzed hair cap
     const hair=new THREE.Mesh(new THREE.SphereGeometry(.28,14,12,0,Math.PI*2,0,1.25),
       new THREE.MeshStandardMaterial({color:0x241a14, roughness:.95})); hair.position.set(-.02,.05,0); head.add(hair);
