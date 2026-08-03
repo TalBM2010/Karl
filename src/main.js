@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { V3, lerp, rand, AUTO } from './util.js';
 import { initEnvironment } from './env.js';
+import { initRender } from './render.js';
 import { buildCarl, buildDonut, buildSpider } from './actors.js';
 import { createVfx } from './vfx.js';
 import { initHud } from './hud.js';
@@ -26,6 +27,8 @@ const CAM_OFF_BOSS=CAM_OFF.clone().multiplyScalar(1.62);
 let bossW=0; // 0 = tight hero framing, 1 = full-boss framing (lerped so the transition is smooth)
 
 const env=initEnvironment(scene, renderer);
+// Render pipeline (IBL + post stack) owns how the scene reaches the screen each frame.
+const rp=initRender(renderer, scene, camera);
 const vfx=createVfx(scene, camera, document.getElementById('fct'));
 const hud=initHud();
 
@@ -136,13 +139,13 @@ function frame(now){
   hero.mp=Math.min(hero.maxmp, hero.mp+dt*24); hud.update(hero); hud.setKills(KILLS);
   window.__gameState={fps:Math.round(fps), enemies:enemies.filter(e=>!e.dead).length, kills:KILLS, hp:Math.round(hero.hp), ready:true};
 
-  env.render(camera); requestAnimationFrame(frame);
+  rp.render(); requestAnimationFrame(frame);
 }
 function killEnemy(e){ e.dead=true; KILLS++; vfx.addShake(e.isBoss?.6:.3); vfx.killBurst(e.obj.position);
   for(const cb of hooks.kill) cb(e);
   if(!e.isBoss) setTimeout(()=>{ const a=rand(0,6.28),r=rand(8,14); spawnSpider(Math.cos(a)*r+hero.pos.x, Math.sin(a)*r+hero.pos.z, rand(.8,1.3)); },1200); }
 
-addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); rp.setSize(innerWidth,innerHeight); });
 document.getElementById('loading').style.display='none'; window.__READY=true;
 
 // Auto-load optional plug-in modules if present; each exports init(api). Missing = silently skipped.
