@@ -4,7 +4,8 @@
 // (armPivotR/L, legL/R, axe, torso, head for Carl; legs+mat for spiders).
 // Judge against rubric 4 (heroic silhouette/scale), 5 (Donut companion), 6 (enemy menace).
 import * as THREE from 'three';
-import { rand, crystalGeo } from './util.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { rand, lerp, crystalGeo } from './util.js';
 
 // ---------------------------------------------------------------------------
 // PROCEDURAL DETAIL MAPS (generated in-code, no external assets). Shared across
@@ -29,149 +30,12 @@ function skinBumpTex(){
 }
 
 // ---------------------------------------------------------------------------
-// CARL  — a big, heroic, bare-chested barbarian. ~2.4 units tall, broad V-taper
-// torso, defined arms/legs, dark hair + beard, white heart-print boxers, barefoot,
-// wielding a glowing double-bit cyan energy battle-axe in the right hand.
-//
-// Sculpt philosophy: muscle BELLIES are lit skin (skin / skinLt crowns), muscle
-// SEPARATIONS are thin dark skinDk "groove" geometry that fakes ambient-occlusion
-// shadow lines — so pecs/abs/delts/quads read as cut muscle groups, not soft lumps.
-//
-// ANIMATION CONTRACT (main.js): userData exposes
-//   torso   (Group, position.y bobbed on idle around 1.5 — his chest/shoulders)
-//   head    (his head)
-//   legL/legR (Groups pivoted at the HIPS; .rotation.x drives the walk)
-//   armPivotL/armPivotR (Groups pivoted at the SHOULDERS; .rotation.x/.z drive
-//                        walk-swing + the attack chop; axe is a child of armPivotR)
-//   axe     (the battle-axe group)
+// GLOWING DOUBLE-BIT CYAN ENERGY BATTLE-AXE. Extracted so both the procedural
+// hero and the rigged-glTF Carl can grip the exact same weapon. Returns a Group
+// whose haft runs along +/-Y (grip near origin, head at +Y ~0.9, pommel at -Y).
+// The caller seats it in a hand (offset + rotation). Includes a cyan PointLight.
 // ---------------------------------------------------------------------------
-export function buildCarl(){
-  const g=new THREE.Group();
-  const bump=skinBumpTex();
-  const skin  =new THREE.MeshStandardMaterial({color:0xd39760, roughness:.6,  metalness:0, bumpMap:bump, bumpScale:.02});
-  const skinLt=new THREE.MeshStandardMaterial({color:0xe7ac77, roughness:.52, metalness:0, bumpMap:bump, bumpScale:.02}); // sun-caught muscle crown
-  const skinDk=new THREE.MeshStandardMaterial({color:0xa06e42, roughness:.66, metalness:0, bumpMap:bump, bumpScale:.016}); // shadow groove between muscles
-  const hairMat=new THREE.MeshStandardMaterial({color:0x201009, roughness:.95});
-  const whiteMat=new THREE.MeshStandardMaterial({color:0xe9e6dd, roughness:.85}); // warm off-white so bloom doesn't blow the boxers to a solid blob
-  const heartMat=new THREE.MeshStandardMaterial({color:0xff3358, emissive:0xd61438, emissiveIntensity:1.1, roughness:.5});
-
-  // thin dark crevice box that fakes the shadow line between two muscle bellies
-  function groove(parent,x,y,z,w,h,d,rz=0,ry=0){
-    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), skinDk);
-    m.position.set(x,y,z); m.rotation.set(0,ry,rz); parent.add(m); return m;
-  }
-
-  // ---- TORSO GROUP (bobbed by main.js; rest center y=1.5) ----------------
-  const torso=new THREE.Group(); torso.position.y=1.5; g.add(torso);
-  // main chest slab: broad up top, tapering to the waist (heroic V) — slightly leaner
-  const chest=new THREE.Mesh(new THREE.CapsuleGeometry(.44,.52,6,16), skin);
-  chest.scale.set(1.26,1.04,.7); chest.position.y=.08; torso.add(chest);
-  // traps / broad shoulder mass (lit crowns)
-  for(const s of [-1,1]){ const trap=new THREE.Mesh(new THREE.SphereGeometry(.25,14,12), skinLt);
-    trap.position.set(.4*s,.36,-.02); trap.scale.set(1,.78,.92); torso.add(trap); }
-  // deltoid caps that flow into the shoulders
-  for(const s of [-1,1]){ const delt=new THREE.Mesh(new THREE.SphereGeometry(.23,14,12), skinLt);
-    delt.position.set(.56*s,.2,0); delt.scale.set(.9,1,1); torso.add(delt); }
-  // pecs: two distinct angled slabs with a sternum groove between + under-pec cut
-  for(const s of [-1,1]){ const pec=new THREE.Mesh(new THREE.SphereGeometry(.25,16,14), skinLt);
-    pec.position.set(.19*s,.17,.29); pec.scale.set(1.08,.7,.66); pec.rotation.z=-.18*s; torso.add(pec); }
-  groove(torso, 0,.2,.34, .05,.3,.12);                 // sternum
-  for(const s of [-1,1]) groove(torso, .19*s,.02,.33, .34,.045,.1, 0);  // under-pec fold
-  // six-pack: lit ab bumps with a linea-alba + tendon grooves cut through them
-  for(let r=0;r<3;r++) for(const s of [-1,1]){ const ab=new THREE.Mesh(new THREE.SphereGeometry(.1,12,10), skinLt);
-    ab.position.set(.1*s,-.06-r*.17,.32); ab.scale.set(1.05,.9,.5); torso.add(ab); }
-  groove(torso, 0,-.23,.35, .04,.62,.09);              // linea alba (center line)
-  for(let r=0;r<2;r++) groove(torso, 0,-.145-r*.17,.35, .34,.038,.09); // tendinous ab lines
-  // serratus / oblique steps on the sides
-  for(const s of [-1,1]) for(let i=0;i<2;i++){ const ser=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8), skinLt);
-    ser.position.set(.3*s,-.02-i*.14,.2); ser.scale.set(.7,.6,.7); torso.add(ser); }
-  // lat / oblique taper toward the waist
-  for(const s of [-1,1]){ const lat=new THREE.Mesh(new THREE.SphereGeometry(.19,12,10), skin);
-    lat.position.set(.33*s,-.12,-.02); lat.scale.set(.68,1.1,.82); torso.add(lat); }
-
-  // neck + sternocleidomastoid hint
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.145,.185,.24,12), skin);
-  neck.position.y=1.9; g.add(neck);
-
-  // ---- HEAD ---------------------------------------------------------------
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.26,20,18), skin);
-  head.position.y=2.15; head.scale.set(.98,1.1,1); g.add(head);
-  // cheekbones + squared jaw so the face has structure at distance
-  for(const s of [-1,1]){ const cheek=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8), skinLt);
-    cheek.position.set(.13*s,2.14,.2); cheek.scale.set(.8,.7,.7); g.add(cheek); }
-  const jaw=new THREE.Mesh(new THREE.SphereGeometry(.2,14,12), skin); jaw.position.set(0,2.02,.06); jaw.scale.set(1,.72,.94); g.add(jaw);
-  // heavy brow ridge (dark, angled down) — the single strongest "face" read at game distance
-  const brow=new THREE.Mesh(new THREE.BoxGeometry(.34,.07,.09), skinDk); brow.position.set(0,2.24,.22); brow.rotation.x=.25; g.add(brow);
-  // nose
-  const nose=new THREE.Mesh(new THREE.ConeGeometry(.055,.14,6), skin); nose.position.set(0,2.14,.27); nose.rotation.x=Math.PI*.5; nose.scale.set(1,1,.7); g.add(nose);
-  // deep-set eyes under the brow
-  for(const s of [-1,1]){ const eye=new THREE.Mesh(new THREE.SphereGeometry(.032,8,8),
-      new THREE.MeshStandardMaterial({color:0x160d08})); eye.position.set(.095*s,2.185,.245); g.add(eye); }
-  // hair cap (swept back)
-  const hair=new THREE.Mesh(new THREE.SphereGeometry(.285,18,16,0,Math.PI*2,0,1.5), hairMat);
-  hair.position.set(0,2.21,-.03); hair.scale.set(1,1,1.05); g.add(hair);
-  // thick beard wrapping the jaw (fuller, shaped)
-  const beard=new THREE.Mesh(new THREE.SphereGeometry(.25,18,14,0,Math.PI*2,Math.PI*0.52,Math.PI*0.48), hairMat);
-  beard.position.set(0,2.06,.05); beard.scale.set(1.02,1.15,1.06); g.add(beard);
-  for(const s of [-1,1]){ const side=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8), hairMat); // sideburns joining hair->beard
-    side.position.set(.19*s,2.12,.02); side.scale.set(.6,1,.8); g.add(side); }
-  const stache=new THREE.Mesh(new THREE.BoxGeometry(.16,.05,.05), hairMat); stache.position.set(0,2.09,.24); g.add(stache);
-
-  // ---- HEART-PRINT BOXER SHORTS ------------------------------------------
-  const shorts=new THREE.Mesh(new THREE.CapsuleGeometry(.4,.26,6,16), whiteMat);
-  shorts.position.y=1.0; shorts.scale.set(1.2,1.0,.8); g.add(shorts);
-  const waistband=new THREE.Mesh(new THREE.TorusGeometry(.4,.035,8,18), whiteMat);
-  waistband.rotation.x=Math.PI/2; waistband.position.y=1.16; waistband.scale.set(1.2,1,.8); g.add(waistband);
-  // short legs of the boxers around each thigh top
-  for(const s of [-1,1]){ const cuff=new THREE.Mesh(new THREE.CylinderGeometry(.24,.26,.26,14), whiteMat);
-    cuff.position.set(.24*s,.84,0); g.add(cuff); }
-  // scattered red hearts across the front + sides so they read from the iso cam
-  const heartGeo=new THREE.SphereGeometry(.052,8,7);
-  const heartSpots=[[-.28,1.12,.32],[.02,1.16,.36],[.30,1.10,.30],[-.32,.94,.30],[.30,.92,.28],
-                    [-.02,.98,.40],[-.40,1.04,.06],[.40,1.02,.05],[-.18,.86,.30],[.18,.86,.30]];
-  for(const [x,y,z] of heartSpots){
-    const lobeL=new THREE.Mesh(heartGeo, heartMat), lobeR=new THREE.Mesh(heartGeo, heartMat), tip=new THREE.Mesh(heartGeo, heartMat);
-    lobeL.position.set(x-.035,y+.03,z); lobeR.position.set(x+.035,y+.03,z);
-    tip.position.set(x,y-.045,z); tip.scale.set(.9,1.1,.9);
-    for(const m of [lobeL,lobeR,tip]){ m.scale.multiplyScalar(1); g.add(m); }
-  }
-
-  // ---- LEGS (Groups pivoted at the hips) ---------------------------------
-  function buildLeg(side){
-    const hip=new THREE.Group(); hip.position.set(.22*side,.98,0); g.add(hip);
-    const thigh=new THREE.Mesh(new THREE.CapsuleGeometry(.19,.42,6,12), skin); thigh.position.y=-.3; thigh.scale.set(1,1,.95); hip.add(thigh);
-    // quad sweep (lit) + inner-thigh teardrop, split by a groove -> defined quads
-    const quad=new THREE.Mesh(new THREE.SphereGeometry(.16,12,10), skinLt); quad.position.set(.06*side,-.28,.12); quad.scale.set(.7,1.4,.6); hip.add(quad);
-    const vmo=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8), skinLt); vmo.position.set(-.05*side,-.46,.12); vmo.scale.set(.8,.9,.6); hip.add(vmo);
-    groove(hip, .0,-.34,.16, .035,.4,.06);
-    const knee=new THREE.Mesh(new THREE.SphereGeometry(.15,12,10), skin); knee.position.y=-.56; knee.position.z=.03; hip.add(knee);
-    const calf=new THREE.Mesh(new THREE.CapsuleGeometry(.155,.34,6,12), skin); calf.position.y=-.78; calf.scale.set(1,1,1.05); hip.add(calf);
-    const gastroc=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8), skinLt); gastroc.position.set(0,-.72,-.08); gastroc.scale.set(1,1.3,.7); hip.add(gastroc); // calf diamond
-    const shin=new THREE.Mesh(new THREE.CapsuleGeometry(.08,.28,5,8), skin); shin.position.set(0,-.82,.1); hip.add(shin);
-    // bare foot with a little arch/toe shaping
-    const foot=new THREE.Mesh(new THREE.BoxGeometry(.2,.11,.3), skin); foot.position.set(0,-1.02,.09); hip.add(foot);
-    const toes=new THREE.Mesh(new THREE.BoxGeometry(.19,.07,.08), skinLt); toes.position.set(0,-1.03,.24); hip.add(toes);
-    return hip;
-  }
-  const legL=buildLeg(-1), legR=buildLeg(1);
-
-  // ---- ARMS (Groups pivoted at the shoulders) ----------------------------
-  function buildArm(side){
-    const pivot=new THREE.Group(); pivot.position.set(.64*side,1.82,0); g.add(pivot);
-    const delt=new THREE.Mesh(new THREE.SphereGeometry(.2,14,12), skinLt); delt.scale.set(1,.92,1); pivot.add(delt);
-    const upper=new THREE.Mesh(new THREE.CapsuleGeometry(.155,.4,6,12), skin); upper.position.y=-.32; pivot.add(upper);
-    // bicep peak (lit) + tricep mass, groove between = cut upper arm
-    const bicep=new THREE.Mesh(new THREE.SphereGeometry(.13,12,10), skinLt); bicep.position.set(.02,-.28,.08); bicep.scale.set(.9,1.2,.85); pivot.add(bicep);
-    const tricep=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8), skin); tricep.position.set(-.02,-.34,-.09); tricep.scale.set(.85,1.3,.8); pivot.add(tricep);
-    const elbow=new THREE.Mesh(new THREE.SphereGeometry(.125,12,10), skin); elbow.position.y=-.58; pivot.add(elbow);
-    const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.135,.4,6,12), skin); fore.position.y=-.82; pivot.add(fore);
-    const brach=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8), skinLt); brach.position.set(.05*side,-.72,.06); brach.scale.set(.8,1.2,.7); pivot.add(brach); // forearm muscle
-    const hand=new THREE.Mesh(new THREE.SphereGeometry(.145,12,10), skin); hand.position.y=-1.08; hand.scale.set(1,.9,1.1); pivot.add(hand);
-    return pivot;
-  }
-  const armPivotL=buildArm(-1), armPivotR=buildArm(1);
-
-  // ---- GLOWING BLUE ENERGY BATTLE-AXE (child of right arm) ----------------
+export function buildAxe(){
   const axe=new THREE.Group();
   const haftMat=new THREE.MeshStandardMaterial({color:0x2b1d12, roughness:.85});
   const haft=new THREE.Mesh(new THREE.CylinderGeometry(.05,.06,1.9,8), haftMat); axe.add(haft);
@@ -192,12 +56,187 @@ export function buildCarl(){
   const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.16,0), new THREE.MeshStandardMaterial({color:0xbfeeff,emissive:0x79ceff,emissiveIntensity:2.3,roughness:.1}));
   core.position.y=.9; axe.add(core);
   const glow=new THREE.PointLight(0x5ec0ff,4.2,8,2); glow.position.y=.9; axe.add(glow);
-  // seat the axe in the right hand, blade up and out for a heroic ready pose
-  axe.position.set(.03,-1.0,.12); axe.rotation.set(-.3,0,.4); armPivotR.add(axe);
+  return axe;
+}
 
-  g.userData={armPivotR,armPivotL,legL,legR,axe,torso,head};
-  g.scale.setScalar(1.22); // extra heroic presence — clearly larger than the arachnids
-  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+// ---------------------------------------------------------------------------
+// CARL — now a REAL RIGGED glTF humanoid (mixamo Xbot) retextured + accessorized
+// into Dungeon Crawler Carl:  warm bare skin, white heart-print boxer shorts,
+// dark hair + beard, bare feet, gripping the glowing cyan energy battle-axe.
+// Skeletal animation via THREE.AnimationMixer (idle / walk / run, cross-faded),
+// plus an additive right-arm overhead chop for attacks (no attack clip exists).
+//
+// buildCarl() returns a THREE.Group IMMEDIATELY; the skinned model + accessories
+// are added asynchronously when Xbot.glb finishes loading. main.js drives:
+//   userData.update(dt, state)  state ∈ {'idle','move','attack'} — advance mixer,
+//                               crossfade idle<->run, blend the chop.
+//   userData.attack()           trigger a ~0.4s right-arm overhead chop.
+// Everything is null-guarded so update()/attack() are safe before the model loads.
+// A visible placeholder is shown if the glTF fails so the game never breaks.
+//
+// The Xbot rig: bones live under an Armature scaled 0.01 (bone space is cm), and
+// in the bind pose every bone's local axes align with world (X=right, Y=up,
+// Z=forward). Accessories attach to a bone via a "holder" Group whose scale
+// cancels the bone's world scale, so inside a holder everything is in world
+// METRES, world-aligned — offsets and geometry read in the same units as the axe.
+// ---------------------------------------------------------------------------
+const CARL_HEIGHT=2.4;         // target standing height (world units)
+const CHOP_DUR=0.42;           // seconds — one overhead attack chop
+export function buildCarl(){
+  const g=new THREE.Group();
+  const bump=skinBumpTex();
+  // warm bare-skin material (shared by the whole body so he reads as a bare-chested man)
+  const skin=new THREE.MeshStandardMaterial({color:0xd39760, roughness:.6, metalness:0, bumpMap:bump, bumpScale:.015});
+  const hairMat=new THREE.MeshStandardMaterial({color:0x201009, roughness:.95});
+  const whiteMat=new THREE.MeshStandardMaterial({color:0xe9e6dd, roughness:.85}); // warm off-white so bloom doesn't blow the boxers to a blob
+  const heartMat=new THREE.MeshStandardMaterial({color:0xff3358, emissive:0xd61438, emissiveIntensity:1.15, roughness:.5});
+
+  // ---- live state, populated on load; update()/attack() close over these -----
+  let mixer=null, model=null;
+  const act={};                 // idle / walk / run AnimationActions
+  let attackT=0;                // remaining seconds of the current chop
+  let rArm=null, rFore=null, rShoulder=null; // bones the chop rotates
+
+  // Attach a holder to a named bone that neutralises the bone's world scale, so
+  // its children are authored in world metres. boneWorldScale is uniform here.
+  function boneHolder(name, boneWorldScale){
+    const bone=model.getObjectByName(name); if(!bone) return null;
+    const h=new THREE.Group(); h.scale.setScalar(1/boneWorldScale); bone.add(h); return h;
+  }
+
+  // ---- HEART-PRINT BOXER SHORTS (child of the Hips bone → sways with the pelvis)
+  function makeShorts(){
+    const s=new THREE.Group();
+    // fitted trunk covering the pelvis and dropping to mid-thigh (boxer silhouette)
+    const trunk=new THREE.Mesh(new THREE.CapsuleGeometry(.185,.2,6,16), whiteMat);
+    trunk.scale.set(1.16,1,.86); trunk.position.y=-.08; s.add(trunk);
+    // slim waistband up top (thin so it doesn't read as a big bright ring)
+    const waist=new THREE.Mesh(new THREE.TorusGeometry(.2,.02,8,20), whiteMat);
+    waist.rotation.x=Math.PI/2; waist.position.y=.04; waist.scale.set(1.16,1,.86); s.add(waist);
+    // short legs of the boxers over each upper thigh, with a hem cuff
+    for(const sd of [-1,1]){ const cuff=new THREE.Mesh(new THREE.CylinderGeometry(.115,.14,.18,16), whiteMat);
+      cuff.position.set(.115*sd,-.22,0); cuff.scale.set(1,1,.9); s.add(cuff);
+      const hem=new THREE.Mesh(new THREE.TorusGeometry(.13,.018,8,16), whiteMat);
+      hem.rotation.x=Math.PI/2; hem.position.set(.115*sd,-.31,0); hem.scale.set(1,1,.9); s.add(hem); }
+    // scattered small red hearts across the front + sides so they read from the iso cam
+    const heartSpots=[[-.12,.0,.18],[.02,.03,.19],[.13,-.01,.17],[-.14,-.12,.16],[.14,-.12,.15],
+                      [0,-.09,.2],[-.19,-.02,.03],[.19,-.02,.03],[-.08,-.2,.15],[.08,-.2,.15]];
+    const hg=new THREE.SphereGeometry(.022,8,7);
+    for(const [x,y,z] of heartSpots){
+      const a=new THREE.Mesh(hg,heartMat), b=new THREE.Mesh(hg,heartMat), t=new THREE.Mesh(hg,heartMat);
+      a.position.set(x-.015,y+.013,z); b.position.set(x+.015,y+.013,z);
+      t.position.set(x,y-.019,z); t.scale.set(.85,1.15,.85);
+      s.add(a,b,t);
+    }
+    s.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+    return s;
+  }
+
+  // ---- DARK HAIR + SHORT BEARD (child of the Head bone) ----------------------
+  function makeHair(){
+    // The Head bone sits at the neck/jaw line; the visible skull crown is ~0.18-0.22m
+    // ABOVE it. Place the hair cap high on the crown and the beard down at the jaw.
+    const h=new THREE.Group();
+    // swept-back hair cap (upper hemisphere) sitting on the crown
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(.135,18,16,0,Math.PI*2,0,1.75), hairMat);
+    cap.position.set(0,.17,-.01); cap.scale.set(1.04,1.05,1.1); h.add(cap);
+    // beard wrapping the lower jaw (lower band of a sphere)
+    const beard=new THREE.Mesh(new THREE.SphereGeometry(.115,18,14,0,Math.PI*2,Math.PI*0.5,Math.PI*0.52), hairMat);
+    beard.position.set(0,.05,.02); beard.scale.set(1.04,1.2,1.14); h.add(beard);
+    for(const sd of [-1,1]){ const side=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8), hairMat); // sideburns joining hair→beard
+      side.position.set(.1*sd,.11,.02); side.scale.set(.6,1.3,.9); h.add(side); }
+    const stache=new THREE.Mesh(new THREE.BoxGeometry(.075,.024,.03), hairMat); stache.position.set(0,.07,.12); h.add(stache);
+    h.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+    return h;
+  }
+
+  // ---- VISIBLE FALLBACK so the game never breaks if the glTF fails to load ----
+  let placeholder=null;
+  function makePlaceholder(){
+    const p=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CapsuleGeometry(.45,1.1,8,16), skin); body.position.y=1.2; p.add(body);
+    const hd=new THREE.Mesh(new THREE.SphereGeometry(.32,18,16), skin); hd.position.y=2.05; p.add(hd);
+    const sh=makeShorts(); sh.scale.setScalar(4.2); sh.position.y=.95; p.add(sh);
+    const ax=buildAxe(); ax.scale.setScalar(.9); ax.position.set(.55,1.3,.2); ax.rotation.set(-.3,0,.4); p.add(ax);
+    p.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+    return p;
+  }
+
+  // ---- LOAD THE RIGGED MODEL --------------------------------------------------
+  new GLTFLoader().load('/assets/models/Xbot.glb', (gltf)=>{
+    model=gltf.scene;
+    // retexture every skinned mesh to warm bare skin (was a grey mannequin bodysuit)
+    model.traverse(o=>{ if(o.isMesh||o.isSkinnedMesh){ o.material=skin; o.castShadow=true; o.frustumCulled=false; } });
+    // scale to CARL_HEIGHT and drop feet to y≈0
+    model.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(model);
+    const F=CARL_HEIGHT/(box.max.y-box.min.y);
+    model.scale.multiplyScalar(F);
+    model.position.y=-box.min.y*F;
+    g.add(model);
+    // TRUE bone world scale = model scale × the Armature's internal 0.01 (mixamo cm→m).
+    // (model is the glTF scene WRAPPER at scale F; the skeleton lives under a child
+    // Armature scaled 0.01, so a bone's world scale is F*0.01, NOT model.scale.)
+    model.updateWorldMatrix(true,true);
+    const _ws=new THREE.Vector3();
+    model.getObjectByName('mixamorigHips').getWorldScale(_ws);
+    const boneWorldScale=_ws.x;
+
+    // accessories on their bones
+    const hipsH=boneHolder('mixamorigHips', boneWorldScale);
+    if(hipsH){ hipsH.add(makeShorts()); }
+    const headH=boneHolder('mixamorigHead', boneWorldScale);
+    if(headH){ headH.add(makeHair()); }
+    const handH=boneHolder('mixamorigRightHand', boneWorldScale);
+    if(handH){ const axe=buildAxe();
+      // seat the haft in the fist: grip near origin, head angled up-forward so it
+      // reads as gripped and swings with the hand through the locomotion + chop.
+      axe.scale.setScalar(0.8);
+      axe.position.set(.03,.06,.02); axe.rotation.set(Math.PI*0.62,0.15,0.05);
+      axe.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); handH.add(axe);
+      g.userData.axe=axe; }
+
+    // chop bones
+    rArm=model.getObjectByName('mixamorigRightArm');
+    rFore=model.getObjectByName('mixamorigRightForeArm');
+    rShoulder=model.getObjectByName('mixamorigRightShoulder');
+
+    // animation mixer: idle / walk / run all playing, blended by weight
+    mixer=new THREE.AnimationMixer(model);
+    for(const nm of ['idle','walk','run']){
+      const clip=gltf.animations.find(a=>a.name===nm); if(!clip) continue;
+      const a=mixer.clipAction(clip); a.play(); a.setEffectiveWeight(nm==='idle'?1:0); act[nm]=a;
+    }
+    if(placeholder){ g.remove(placeholder); placeholder=null; }
+  }, undefined, (err)=>{
+    console.warn('Carl glTF failed to load, using placeholder:', err);
+    if(!placeholder){ placeholder=makePlaceholder(); g.add(placeholder); }
+  });
+
+  // ---- ANIMATION API (null-guarded; called every frame from load time) --------
+  // additive overhead chop applied AFTER mixer.update (the clip pose is the base,
+  // reset each frame, so rotateX here is a clean per-frame additive swing).
+  function applyChop(){
+    if(!rArm) return;
+    const p=1-attackT/CHOP_DUR;                     // 0 → 1 over the chop
+    let a;                                          // upper-arm swing angle
+    if(p<0.28){ a=-(p/0.28)*1.5; }                  // anticipation: cock overhead
+    else { const q=(p-0.28)/0.72; a=-1.5+(q*q)*3.0; } // quadratic snap down + follow-through
+    rArm.rotateX(a);
+    if(rFore) rFore.rotateX(a*0.35);
+    if(rShoulder) rShoulder.rotateX(a*0.25);
+  }
+  g.userData.update=(dt, state)=>{
+    if(placeholder){ placeholder.position.y=Math.sin(performance.now()/500)*.03; }
+    if(!mixer) return;
+    const moving=(state==='move');
+    if(act.run)  act.run.setEffectiveWeight(lerp(act.run.getEffectiveWeight(),  moving?1:0, .15));
+    if(act.idle) act.idle.setEffectiveWeight(lerp(act.idle.getEffectiveWeight(), moving?0:1, .15));
+    mixer.update(dt);
+    if(attackT>0){ attackT=Math.max(0,attackT-dt); applyChop(); }
+  };
+  g.userData.attack=()=>{ attackT=CHOP_DUR; };
+
   return g;
 }
 

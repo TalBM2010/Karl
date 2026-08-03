@@ -65,6 +65,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{ mouse.x=(e.clientX/inner
 
 // ---- loop
 let last=performance.now(), fpsAcc=0, fpsN=0, fps=60, autoT=0;
+let carlPrevSwing=0; // rising-edge detector so the rigged Carl fires exactly one chop per swing
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000); last=now; fpsAcc+=1/dt; fpsN++; if(fpsN>=20){ fps=fpsAcc/fpsN; fpsAcc=0; fpsN=0; }
 
@@ -93,15 +94,15 @@ function frame(now){
         if(hero.target.hp<=0){ killEnemy(hero.target); hero.target=null; } } } }
   hero.swing=Math.max(0,hero.swing-dt*2.7);
 
-  // carl transform + anim
+  // carl transform + anim — rigged glTF Carl drives a skeletal AnimationMixer.
   carl.position.copy(hero.pos); carl.rotation.y=lerp(carl.rotation.y,hero.face,.25); carlBlob.position.set(hero.pos.x,.02,hero.pos.z);
-  const t=now/1000, {armPivotR,armPivotL,legL,legR,torso}=carl.userData;
-  if(hero.moving){ const gg=Math.sin(t*11)*.6; legL.rotation.x=gg; legR.rotation.x=-gg; armPivotL.rotation.x=-gg*.7; if(hero.swing<.05)armPivotR.rotation.x=gg*.7; vfx.spawnDust(hero.pos); }
-  else { torso.position.y=1.5+Math.sin(t*2)*.05; legL.rotation.x*=.8; legR.rotation.x*=.8; armPivotL.rotation.x*=.8; }
-  // weighty overhead chop: brief anticipation (arm cocked high), quadratic snap-down, follow-through
-  if(hero.swing>.02){ const ph=1-hero.swing, e=ph*ph; armPivotR.rotation.x=-2.0+2.6*e; armPivotR.rotation.z=Math.sin(ph*Math.PI)*.5;
-    armPivotL.rotation.x=-.35*e; torso.rotation.y=-.4*Math.sin(ph*Math.PI); }
-  else { armPivotR.rotation.z*=.8; torso.rotation.y*=.8; }
+  // rising edge of hero.swing (set to 1 the frame an attack fires) → trigger one chop
+  if(hero.swing>.9 && carlPrevSwing<=.9) carl.userData.attack();
+  carlPrevSwing=hero.swing;
+  const carlState = hero.swing>.05 ? 'attack' : (hero.moving ? 'move' : 'idle');
+  carl.userData.update(dt, carlState);
+  if(hero.moving) vfx.spawnDust(hero.pos);
+  const t=now/1000; // retained for the donut-follow weave below
 
   // donut follows — kept on Carl's camera-near side (+X/+Z) with a gentle weave so she's ALWAYS
   // clearly visible padding beside him and never hidden behind Carl or the boss; keeps pace closer.
