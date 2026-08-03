@@ -1,13 +1,13 @@
 {
-  "updated": "2026-08-03 10:55 UTC",
-  "wave": 4,
+  "updated": "2026-08-03 12:20 UTC",
+  "wave": 5,
   "rounds": 9,
   "overall": 8.6,
-  "note": "Wave 4 + final cohesion complete. The game now spans, in the books' order: a bloom-lit world, weighty combat with spectacular abilities, the Juicer boss set-piece, loot + a dramatic reward ceremony, inventory + character sheet, and floor progression (The Crawl → The Bramble → The Iron Tangle) — all cohered, overlays cleanly layered, holding up in motion at ~8.6/10 vs the Diablo IV bar.",
+  "note": "VISUAL OVERHAUL underway. Decision: stay on three.js/WebGL (it's the only platform our auto-capture critic loop can drive here; Unity/Unreal can't render headless in this container) — the real lever is ASSETS + pipeline, not the engine. Confirmed this environment can pull real rigged glTF models + HDRIs, and proved a skinned model + image-based lighting + real bloom renders clean headless — a night-and-day fidelity jump. Now rebuilding on that: IBL + post-FX pipeline first, then real character/creature models (Hybrid: Carl/Donut/Juicer keep their identity on real rigged bases).",
   "latestShots": [
-    { "path": "captures/w4_main/shot_00.png", "cap": "Floor-intro: 'FLOOR 1 — THE CRAWL' System announcement w/ viewer hype (book order)" },
-    { "path": "captures/final_verify/shot_05.png", "cap": "Loot-box ceremony — now dims the game cleanly behind the reward card" },
-    { "path": "captures/w3_combat/shot_02.png", "cap": "Combat: abilities + readable skill-bar cooldowns, veiny Juicer" },
+    { "path": "captures/assettest/shot_01.png", "cap": "PROOF: a real rigged glTF model under image-based lighting + bloom — the fidelity tier we're moving to (vs primitives)" },
+    { "path": "captures/w4_main/shot_00.png", "cap": "Current build: 'FLOOR 1 — THE CRAWL' System floor-intro (book order)" },
+    { "path": "captures/final_verify/shot_05.png", "cap": "Current build: loot-box ceremony reward reveal" },
     { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
     { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
   ],
@@ -33,7 +33,10 @@
     { "name": "Loot-box opening ceremony (reward mechanism)", "status": "winning", "score": 8.0, "note": "charge → burst → rarity-flourished reward card + CLAIM; on-theme System voice" }
   ],
   "log": [
-    { "t": "10:55", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #4: loot-box ceremony now dims the game cleanly behind the reward card; floor-intro / ceremony / screens gated so overlays never stack. Full QA sweep — every system reads coherently. 8.5 → 8.6." },
+    { "t": "12:20", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Visual-overhaul wave launched: render-pipeline builder adding image-based lighting (PMREM/RoomEnvironment) + a real post-processing stack (UnrealBloom + SSAO + FXAA + ACES) to lift the whole scene, ahead of swapping in real glTF characters." },
+    { "t": "12:10", "tag": "PIPELINE ✓", "c": "#1a4a2f", "msg": "De-risked the approach: fetched real rigged glTF models (Soldier/Xbot/Robot/Fox) + HDRIs from the one reachable host, vendored the glTF/HDRI/postFX loaders, and proved a skinned model + IBL + bloom renders clean headless. Committed the asset pipeline." },
+    { "t": "12:00", "tag": "DECISION", "c": "#12303f", "msg": "User: 'make the visuals much better — maybe a different platform?' → Verdict: keep three.js (only engine our critic loop can drive headless here); the lever is real assets + pipeline. Hybrid chosen: Carl/Donut/Juicer keep their identity on real rigged bases." },
+    { "t": "10:55", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #4: loot-box ceremony now dims the game cleanly behind the reward card; floor-intro / ceremony / screens gated so overlays never stack. 8.5 → 8.6." },
     { "t": "10:32", "tag": "CRITIC r8", "c": "#3a2a12", "msg": "Wave 4 judged: floor progression ~8.5 (DCC System floor-intros + retinted floors, book order), loot-box ceremony ~8 (dramatic reward reveal). Overall 8.4 → 8.5." },
     { "t": "10:30", "tag": "INTEGRATE ✓", "c": "#1a4a2f", "msg": "Full Wave-4 build boots clean (errors:[]) — floor-intro announcements, retinted floors, and the loot-box opening ceremony all live alongside combat/boss/HUD." },
     { "t": "10:22", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Floors builder: Floor 1 'The Crawl' → 'The Bramble' → 'The Iron Tangle' with System floor-intro screens + per-floor scene retints + objective updates." },
