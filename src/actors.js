@@ -178,7 +178,7 @@ export function buildDonut(){
   // center gem
   const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.09,0), new THREE.MeshStandardMaterial({color:0xff5d8a,emissive:0xf01e5e,emissiveIntensity:2.4,roughness:.1,metalness:.3}));
   gem.position.set(.32,.86,0); g.add(gem);
-  const cg=new THREE.PointLight(0xffcf6a,2.6,4.5,2); cg.position.set(.32,.82,0); g.add(cg);
+  const cg=new THREE.PointLight(0xffcf6a,3.4,6.0,2); cg.position.set(.32,.82,0); g.add(cg); // brighter warm glow-pool so the companion reads against the dark floor
 
   g.scale.setScalar(1.15); // read as a cat companion beside Carl, still small next to him
   g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });

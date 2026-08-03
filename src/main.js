@@ -20,6 +20,10 @@ const camera=new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 400);
 // Diablo-IV framing: fixed pitched iso angle (same ~44° pitch as before), pulled in tighter
 // so Carl reads as a prominent hero (~1/6 frame height) sitting in the lower-middle.
 const CAM_OFF=V3(11.5,15.5,11.5); let camTarget=V3(), camPos=camTarget.clone().add(CAM_OFF);
+// Boss framing: SAME fixed iso pitch (uniform scale of CAM_OFF preserves the angle exactly),
+// pulled BACK + UP so the whole ~11u-tall Juicer (head→feet) plus Carl are comfortably framed.
+const CAM_OFF_BOSS=CAM_OFF.clone().multiplyScalar(1.62);
+let bossW=0; // 0 = tight hero framing, 1 = full-boss framing (lerped so the transition is smooth)
 
 const env=initEnvironment(scene, renderer);
 const vfx=createVfx(scene, camera, document.getElementById('fct'));
@@ -96,8 +100,9 @@ function frame(now){
     armPivotL.rotation.x=-.35*e; torso.rotation.y=-.4*Math.sin(ph*Math.PI); }
   else { armPivotR.rotation.z*=.8; torso.rotation.y*=.8; }
 
-  // donut follows
-  const dtar=hero.pos.clone().add(V3(Math.cos(t*.5)*1.8,0,Math.sin(t*.5)*1.8)); donut.position.lerp(dtar,.04);
+  // donut follows — kept on Carl's camera-near side (+X/+Z) with a gentle weave so she's ALWAYS
+  // clearly visible padding beside him and never hidden behind Carl or the boss; keeps pace closer.
+  const dtar=hero.pos.clone().add(V3(1.2+Math.sin(t*.8)*.55,0,1.55+Math.cos(t*.8)*.55)); donut.position.lerp(dtar,.06);
   donut.rotation.y=lerp(donut.rotation.y, Math.atan2(hero.pos.x-donut.position.x,hero.pos.z-donut.position.z)-Math.PI/2,.1);
   donutBlob.position.set(donut.position.x,.02,donut.position.z);
 
@@ -116,10 +121,16 @@ function frame(now){
   env.update(dt); vfx.update(dt);
   for(const cb of hooks.frame) cb(dt, now/1000);
 
-  // camera follow + shake
-  camTarget.lerp(hero.pos,.08); camPos.lerp(camTarget.clone().add(CAM_OFF),.1);
+  // camera follow + shake — when a boss is on the field, smoothly pull BACK+UP and raise the aim
+  // so the whole towering Juicer (head→feet) and Carl are framed (reference boss shot); return to
+  // the tight hero framing once it's gone. Same fixed iso angle throughout (no free orbit).
+  const bossE=enemies.find(e=>e.isBoss&&!e.dead);
+  bossW=lerp(bossW, bossE?1:0, .04);
+  const camOff=CAM_OFF.clone().lerp(CAM_OFF_BOSS,bossW);
+  let followPt=hero.pos; if(bossE) followPt=hero.pos.clone().lerp(bossE.obj.position,.30*bossW); // center the Carl↔boss composition
+  camTarget.lerp(followPt,.08); camPos.lerp(camTarget.clone().add(camOff),.1);
   const sh=vfx.consumeShake(dt); camera.position.copy(camPos).add(V3(rand(-1,1)*sh,rand(-1,1)*sh,rand(-1,1)*sh));
-  camera.lookAt(camTarget.x, camTarget.y+2.5, camTarget.z); // aim above Carl's head so he sits in the lower-middle third
+  camera.lookAt(camTarget.x, camTarget.y+2.5+4.0*bossW, camTarget.z); // raise aim so the boss's head clears the top while Carl stays in-frame
 
   // hud
   hero.mp=Math.min(hero.maxmp, hero.mp+dt*24); hud.update(hero); hud.setKills(KILLS);

@@ -178,6 +178,12 @@ export function init(api){
     if(tmp.z>1) return null;
     return { x:(tmp.x*.5+.5)*innerWidth, y:(-tmp.y*.5+.5)*innerHeight };
   }
+  // keep ground labels clear of the broadcast HUD (left feed, right panels, top bars, bottom dock)
+  function clampLabel(sc){
+    sc.x=Math.max(272, Math.min(innerWidth-252, sc.x));
+    sc.y=Math.max(134, Math.min(innerHeight-150, sc.y));
+    return sc;
+  }
 
   function spawnDrop(worldPos, rar, forceType){
     if(drops.length>=MAX){ // force-collect the oldest idle drop to make room
@@ -278,7 +284,7 @@ export function init(api){
         // anticipation: shiver just before it pops
         if(d.age>d.life-0.35){ const s=1+Math.sin(d.age*60)*0.03; g.scale.setScalar(s); }
         if(d.age>=d.life){ popBox(d); continue; }
-        const sc=project(g.position); if(sc){ d.el.style.opacity='1'; d.el.style.left=sc.x+'px'; d.el.style.top=(sc.y-52)+'px'; }
+        const sc=project(g.position); if(sc){ clampLabel(sc); d.el.style.opacity='1'; d.el.style.left=sc.x+'px'; d.el.style.top=(sc.y-52)+'px'; }
         else d.el.style.opacity='0';
         continue;
       }
@@ -296,7 +302,7 @@ export function init(api){
       if(d.state==='idle'){
         if(d.age>=d.life){ d.state='collect'; d.age=0; const sc=project(d.item.getWorldPosition(tmp)); if(sc){ d.sx=sc.x; d.sy=sc.y; d.projected=true; } }
         const sc=project(d.item.getWorldPosition(tmp));
-        if(sc){ d.el.style.opacity='1'; d.el.style.left=sc.x+'px'; d.el.style.top=(sc.y-46)+'px'; }
+        if(sc){ clampLabel(sc); d.el.style.opacity='1'; d.el.style.left=sc.x+'px'; d.el.style.top=(sc.y-46)+'px'; }
         else d.el.style.opacity='0';
         continue;
       }
