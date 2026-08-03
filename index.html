@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dungeon Karl — Galactic Observation Protocol</title>
+<style>
+  :root{
+    --cyan:#39d7ff; --cyan-dim:#1c6a86; --gold:#ffcf6a; --hp:#e23b3b; --mp:#3aa0ff;
+    --panel:rgba(6,14,22,.72); --panel-line:rgba(57,215,255,.28);
+    --crit:#ffb020; --phys:#ffffff; --aether:#c07bff; --blocked:#cfd6dc;
+    --font: "Rajdhani","Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#05080c;overflow:hidden;font-family:var(--font);color:#dbe7ee;-webkit-font-smoothing:antialiased}
+  #game{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:10;font-feature-settings:"tnum"}
+  .hud *{pointer-events:none}
+
+  /* ---------- top title bar ---------- */
+  #topbar{position:absolute;top:0;left:0;right:0;height:34px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,rgba(4,12,20,.9),rgba(4,12,20,0));}
+  #topbar .title{letter-spacing:.5em;font-weight:600;color:var(--cyan);font-size:15px;text-shadow:0 0 14px rgba(57,215,255,.6)}
+  #topbar .sub{position:absolute;left:16px;color:#7fa9bd;font-size:11px;letter-spacing:.15em}
+  #topbar .node{position:absolute;right:16px;color:#7fa9bd;font-size:11px;letter-spacing:.15em}
+  #clock{color:#bfe9f7}
+
+  /* ---------- left: audience feed ---------- */
+  #feed{position:absolute;left:12px;top:44px;width:222px;background:var(--panel);border:1px solid var(--panel-line);
+    border-radius:6px;padding:10px 10px 8px;backdrop-filter:blur(3px);box-shadow:0 0 24px rgba(0,0,0,.6),inset 0 0 30px rgba(57,215,255,.04)}
+  #feed .hdr{display:flex;align-items:center;justify-content:space-between;font-size:9.5px;letter-spacing:.18em;color:#79b6cc}
+  #feed .live{color:#ff5a5a;font-weight:700;display:flex;align-items:center;gap:5px}
+  #feed .live .dot{width:7px;height:7px;border-radius:50%;background:#ff2d2d;box-shadow:0 0 8px #ff2d2d;animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  #viewers{font-size:34px;font-weight:700;color:#eaf7ff;margin:6px 0 0;letter-spacing:.02em;text-shadow:0 0 18px rgba(57,215,255,.35)}
+  #viewers-exact{font-size:10px;color:#6f96a8;margin-bottom:8px}
+  #chat{display:flex;flex-direction:column;gap:7px;max-height:38vh;overflow:hidden}
+  .cmsg{display:flex;gap:7px;opacity:0;transform:translateY(6px);animation:cin .5s forwards}
+  @keyframes cin{to{opacity:1;transform:none}}
+  .cmsg .av{width:16px;height:16px;border-radius:4px;flex:0 0 16px;margin-top:2px;box-shadow:0 0 6px rgba(0,0,0,.5)}
+  .cmsg .who{font-size:10px;font-weight:600}
+  .cmsg .txt{font-size:10.5px;color:#c3d3db;line-height:1.15}
+  .cmsg .t{font-size:9px;color:#5c7c8b;float:right}
+
+  /* ---------- specimen vitals ---------- */
+  #vitals{position:absolute;left:12px;bottom:12px;width:222px;background:var(--panel);border:1px solid var(--panel-line);
+    border-radius:6px;padding:9px;backdrop-filter:blur(3px)}
+  #vitals .hdr{font-size:9.5px;letter-spacing:.18em;color:#79b6cc;margin-bottom:7px}
+  .spec{display:flex;gap:8px;margin-bottom:8px}
+  .spec .por{width:40px;height:40px;border-radius:5px;border:1px solid var(--panel-line);flex:0 0 40px;
+    background:radial-gradient(circle at 40% 30%,#2a3b46,#0b141b)}
+  .spec .nm{font-size:11px;font-weight:700;color:#eaf3f8}
+  .spec .lvl{font-size:9px;color:#6f96a8}
+  .bar{height:5px;border-radius:3px;background:#12212b;margin-top:3px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:3px}
+
+  /* ---------- right: analysis ---------- */
+  #right{position:absolute;right:12px;top:44px;width:210px;display:flex;flex-direction:column;gap:10px}
+  .rpanel{background:var(--panel);border:1px solid var(--panel-line);border-radius:6px;padding:9px;backdrop-filter:blur(3px)}
+  .rpanel .hdr{font-size:9.5px;letter-spacing:.16em;color:#79b6cc;margin-bottom:6px}
+  #minimap{height:120px;border-radius:4px;background:radial-gradient(circle at 60% 40%,#0d2230,#050b10);position:relative;overflow:hidden;border:1px solid rgba(57,215,255,.15)}
+  #minimap .blip{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .obj{font-size:11px;color:#cde0e8;margin:4px 0;display:flex;align-items:center;gap:6px}
+  .obj .box{width:11px;height:11px;border:1px solid #5f93a8;border-radius:2px}
+  .obj.bonus{color:var(--gold)}
+  .metric{display:flex;justify-content:space-between;font-size:10.5px;margin:3px 0;color:#b9ccd5}
+  .metric b{color:var(--cyan);font-weight:600}
+
+  /* ---------- boss bar ---------- */
+  #bossbar{position:absolute;top:42px;left:50%;transform:translateX(-50%);width:520px;display:none;flex-direction:column;align-items:center}
+  #bossbar .nm{font-size:19px;font-weight:700;letter-spacing:.22em;color:#f3e7d8;text-shadow:0 0 12px rgba(0,0,0,.9)}
+  #bossbar .sub{font-size:10px;letter-spacing:.32em;color:#c9a06a;margin-bottom:5px}
+  #bossbar .hprow{display:flex;align-items:center;gap:8px;width:100%}
+  #bossbar .diamond{width:26px;height:26px;background:#1a1216;border:1px solid #7a5a3a;transform:rotate(45deg);display:flex;align-items:center;justify-content:center;flex:0 0 26px}
+  #bossbar .diamond span{transform:rotate(-45deg);font-size:12px;font-weight:700;color:#e9c98a}
+  #bossbar .hpwrap{flex:1;height:16px;background:#180a0a;border:1px solid #5a2020;border-radius:2px;overflow:hidden;position:relative}
+  #bossbar .hpfill{height:100%;background:linear-gradient(180deg,#c23a2a,#7a1410);width:80%}
+  #bossbar .hptxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ffdcc9;text-shadow:0 1px 2px #000}
+  #bossbar .affixes{display:flex;gap:14px;margin-top:5px;font-size:10px;color:#b7c6cd}
+  #bossbar .affixes .a{display:flex;align-items:center;gap:5px}
+  #bossbar .affixes .a .d{width:7px;height:7px;border-radius:50%;background:#7bd0ff;box-shadow:0 0 6px #7bd0ff}
+
+  /* ---------- bottom action bar + orbs ---------- */
+  #dock{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:0}
+  .orb{width:118px;height:118px;border-radius:50%;position:relative;flex:0 0 118px}
+  .orb canvas{width:100%;height:100%;border-radius:50%}
+  .orb .val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:12px;font-weight:600;color:#fff;text-shadow:0 1px 3px #000}
+  #skillbar{display:flex;flex-direction:column;align-items:center;margin:0 8px 6px}
+  #buffs{display:flex;gap:6px;margin-bottom:6px}
+  #buffs .b{width:26px;height:26px;border-radius:4px;border:1px solid var(--panel-line);background:#0c1a22;display:flex;align-items:center;justify-content:center;font-size:9px;color:#9fd4e6}
+  #slots{display:flex;gap:6px}
+  .slot{width:52px;height:52px;border-radius:6px;border:1px solid var(--panel-line);position:relative;
+    background:linear-gradient(180deg,#12222c,#081016);box-shadow:inset 0 0 12px rgba(57,215,255,.06)}
+  .slot .ic{position:absolute;inset:6px;border-radius:4px;background:radial-gradient(circle at 40% 30%,#2b4658,#0a161d)}
+  .slot .key{position:absolute;bottom:-15px;left:0;right:0;text-align:center;font-size:9px;color:#7fa9bd;letter-spacing:.05em}
+  .slot .cd{position:absolute;inset:0;border-radius:5px;background:conic-gradient(rgba(0,0,0,.72) var(--a,0deg),transparent 0);display:none}
+  .slot.cooling .cd{display:block}
+
+  /* ---------- bottom ticker ---------- */
+  #ticker{position:absolute;left:0;right:0;bottom:0;height:22px;background:linear-gradient(0deg,rgba(4,12,20,.92),rgba(4,12,20,0));
+    display:flex;align-items:center;overflow:hidden;font-size:11px}
+  #ticker .lab{color:var(--cyan);letter-spacing:.14em;padding:0 12px;flex:0 0 auto;font-size:10px}
+  #ticker .track{white-space:nowrap;animation:scroll 34s linear infinite;color:#bcd}
+  #ticker .track b{color:var(--gold);margin:0 4px 0 22px}
+  @keyframes scroll{from{transform:translateX(60vw)}to{transform:translateX(-100%)}}
+
+  /* floating combat text layer */
+  #fct{position:absolute;inset:0;overflow:hidden}
+  .num{position:absolute;font-weight:700;transform:translate(-50%,-50%);text-shadow:0 2px 6px rgba(0,0,0,.9);will-change:transform,opacity}
+  .num small{display:block;text-align:center;font-size:.42em;letter-spacing:.15em;font-weight:600;opacity:.9}
+
+  #loading{position:fixed;inset:0;z-index:50;background:#05080c;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#7fbdd4;letter-spacing:.3em;font-size:13px}
+  #loading .b{width:180px;height:2px;background:#12222c;margin-top:14px;overflow:hidden}
+  #loading .b > i{display:block;height:100%;width:30%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:load 1s linear infinite}
+  @keyframes load{from{transform:translateX(-100%)}to{transform:translateX(400%)}}
+</style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div class="hud" id="hud">
+    <div id="topbar">
+      <div class="sub">◈ LIVE BROADCAST · THE UNDERDEEP</div>
+      <div class="title">GALACTIC OBSERVATION PROTOCOL</div>
+      <div class="node">OBSERVATION NODE: XK‑77 / ALPHA · <span id="clock">21:47:36</span></div>
+    </div>
+
+    <div id="feed">
+      <div class="hdr"><span>INTER‑SECTOR AUDIENCE FEED</span><span class="live"><span class="dot"></span>LIVE</span></div>
+      <div style="font-size:9px;letter-spacing:.2em;color:#5f8698;margin-top:6px">TOTAL VIEWERS</div>
+      <div id="viewers">17.8B</div>
+      <div id="viewers-exact">17,812,356,112</div>
+      <div id="chat"></div>
+    </div>
+
+    <div id="bossbar">
+      <div class="nm" id="boss-nm">JUICER</div>
+      <div class="sub" id="boss-sub">ENHANCED BEYOND NATURAL LIMITS</div>
+      <div class="hprow">
+        <div class="diamond"><span id="boss-lvl">78</span></div>
+        <div class="hpwrap"><div class="hpfill" id="boss-hp"></div><div class="hptxt" id="boss-hptxt">42,689,512 / 53,000,000 (80.5%)</div></div>
+      </div>
+      <div class="affixes">
+        <div class="a"><span class="d"></span>Massive Physique</div>
+        <div class="a"><span class="d"></span>Steroid Overload</div>
+        <div class="a"><span class="d"></span>Unstoppable</div>
+        <div class="a"><span class="d"></span>Rage Pump</div>
+      </div>
+    </div>
+
+    <div id="right">
+      <div class="rpanel"><div class="hdr">SECTOR MAP</div><div id="minimap"><div class="blip" id="blip-hero" style="left:55%;top:45%"></div></div></div>
+      <div class="rpanel"><div class="hdr">OBJECTIVES</div>
+        <div style="color:var(--gold);font-size:11px;margin-bottom:4px" id="obj-title">THE CRYSTAL DEPTHS</div>
+        <div class="obj"><span class="box"></span><span id="obj-main">Eliminate the Crystalline Arachnids</span></div>
+        <div class="obj bonus"><span class="box" style="border-color:var(--gold)"></span><span>Bonus: Keep Princess Donut unharmed</span></div>
+      </div>
+      <div class="rpanel"><div class="hdr">COMBAT ANALYSIS</div>
+        <div class="metric"><span>DAMAGE PER SECOND</span><b id="m-dps">1.2M</b></div>
+        <div class="metric"><span>CRITICAL STRIKE RATE</span><b id="m-crit">38.7%</b></div>
+        <div class="metric"><span>ENEMIES ELIMINATED</span><b id="m-kills">247</b></div>
+        <div class="metric"><span>BATTLE DURATION</span><b id="m-dur">00:07:42</b></div>
+      </div>
+    </div>
+
+    <div id="vitals">
+      <div class="hdr">SPECIMEN VITALS</div>
+      <div class="spec">
+        <div class="por"></div>
+        <div style="flex:1">
+          <div class="nm">CARL <span class="lvl" style="float:right">LVL 78</span></div>
+          <div class="bar"><i id="v-hp" style="width:82%;background:linear-gradient(90deg,#ff5a5a,#b81f1f)"></i></div>
+          <div class="bar"><i id="v-en" style="width:71%;background:linear-gradient(90deg,#4db6ff,#1668c9)"></i></div>
+          <div class="bar"><i id="v-ad" style="width:92%;background:linear-gradient(90deg,#ffd36a,#e08a1e)"></i></div>
+        </div>
+      </div>
+      <div class="spec">
+        <div class="por" style="background:radial-gradient(circle at 40% 30%,#4a3a2a,#160f0a)"></div>
+        <div style="flex:1">
+          <div class="nm">PRINCESS DONUT <span class="lvl" style="float:right">LVL 78</span></div>
+          <div class="bar"><i style="width:100%;background:linear-gradient(90deg,#7CFF6a,#2fae1f)"></i></div>
+          <div class="bar"><i style="width:100%;background:linear-gradient(90deg,#c07bff,#7a2fd0)"></i></div>
+          <div class="bar"><i style="width:100%;background:linear-gradient(90deg,#ffd36a,#e08a1e)"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="dock">
+      <div class="orb" id="orb-hp"><canvas width="236" height="236"></canvas><div class="val"><span id="hp-val">15,932 / 16,800</span></div></div>
+      <div id="skillbar">
+        <div id="buffs"></div>
+        <div id="slots"></div>
+      </div>
+      <div class="orb" id="orb-mp"><canvas width="236" height="236"></canvas><div class="val"><span id="mp-val">1,275 / 1,600</span></div></div>
+    </div>
+
+    <div id="ticker">
+      <div class="lab">GALACTIC CHAT TICKER</div>
+      <div class="track" id="ticker-track"></div>
+      <div class="lab" style="margin-left:auto">&lt;&lt; LIVE FEED &gt;&gt;</div>
+    </div>
+
+    <div id="fct"></div>
+  </div>
+
+  <div id="loading"><div>ESTABLISHING BIO‑SCAN SYNC…</div><div class="b"><i></i></div></div>
+
+  <script type="importmap">
+  { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "dungeon-karl",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dungeon Crawler Carl — a Diablo IV-style action RPG in the world of the galactic dungeon broadcast",
+  "scripts": {
+    "serve": "http-server -p 8123 -c-1 --silent",
+    "shot": "node tools/capture.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.56.1"
+  }
+}

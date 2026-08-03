@@ -1,0 +1,27 @@
+{
+  "updated": "2026-08-03 07:20 UTC",
+  "wave": 1,
+  "rounds": 1,
+  "overall": 4.2,
+  "note": "Foundation live: running 3D game + auto-play capture harness + critic loop. Wave 1 attacking the biggest gaps — world depth, hero presence, combat impact.",
+  "latestShots": [
+    { "path": "captures/smoke/shot_01.png", "cap": "Wave 1 baseline — running 3D build, auto-combat" }
+  ],
+  "pieces": [
+    { "name": "Broadcast HUD (orbs / feed / ticker / panels)", "status": "winning", "score": 7.5, "note": "layout reads as Diablo-IV broadcast; refine orb gloss + skill glyphs in wave 2" },
+    { "name": "Environment & floor depth", "status": "building", "score": 3.5, "gap": "scene reads dark/empty — no sightlines, ground near-black, weak recession" },
+    { "name": "Lighting & color grade / post-fx", "status": "building", "score": 3.0, "gap": "flat, dim, no bloom on emissives; frames are rich & moody" },
+    { "name": "Hero (Carl) & companion (Donut)", "status": "building", "score": 3.5, "gap": "Carl reads as a small plain blob, not a heroic muscular silhouette; scale off" },
+    { "name": "Combat feel & VFX & damage numbers", "status": "building", "score": 4.5, "gap": "hits lack weight; damage text not punchy/frequent enough vs frames" },
+    { "name": "Enemies (crystalline arachnids)", "status": "queued", "score": 4.0, "note": "menace + hit reactions + nameplates" },
+    { "name": "Loot, drops & loot boxes", "status": "queued", "score": 0, "note": "book-accurate System loot boxes — later floor" },
+    { "name": "Inventory & character sheet", "status": "queued", "score": 0, "note": "Frames C/D panels" },
+    { "name": "Boss battle — the Juicer", "status": "queued", "score": 0, "note": "Frame A set-piece — Floor progression" }
+  ],
+  "log": [
+    { "t": "07:20", "tag": "FOUNDATION", "c": "#1a4a2f", "msg": "Running 3D build + auto-play Playwright capture harness (stills + ffmpeg clips) + reference rubric are live end-to-end." },
+    { "t": "07:19", "tag": "REFACTOR", "c": "#12303f", "msg": "Split into file-isolated modules (env / actors / vfx / hud) so builder pipelines run in parallel without colliding." },
+    { "t": "07:18", "tag": "CRITIC r1", "c": "#3a2a12", "msg": "First pass vs reference: HUD skeleton strong (7.5); world dark/empty, Carl too small, lighting flat — sent back." },
+    { "t": "07:16", "tag": "BUILD", "c": "#12303f", "msg": "Keystone vertical slice: locked iso cam, Carl + Donut, crystal arachnids, combat, damage numbers, full broadcast HUD." }
+  ]
+}
