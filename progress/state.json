@@ -1,135 +1,37 @@
 {
-  "updated": "2026-08-03 08:10 UTC",
-  "wave": 1,
-  "rounds": 2,
-  "overall": 7.0,
-  "note": "Wave 1 landed and integrated: the world went from a dark empty void to a Diablo-IV-caliber Crystal Depths cavern, combat text is big and punchy, characters rebuilt. Biggest remaining gap: hero prominence. Sending Carl back + a whole-game cohesion pass.",
+  "updated": "2026-08-03 08:35 UTC",
+  "wave": 2,
+  "rounds": 3,
+  "overall": 7.3,
+  "note": "Cohesion pass landed: hero prominence fixed (tighter Diablo-IV framing, readable heart boxers, no white-triangle swing) with world/combat wins intact. Wave 2 now building the three systems the other reference frames show: loot & System loot-boxes, inventory + character sheet, and the Juicer boss battle.",
   "latestShots": [
-    {
-      "path": "captures/wave1_integrated/shot_03.png",
-      "cap": "Wave 1 \u2014 combat: punchy AETHER crit, impact flash, bloom-lit crystal cavern"
-    },
-    {
-      "path": "captures/wave1_integrated/shot_01.png",
-      "cap": "The gap: Carl sits small & some swing poses read as an abstract shape"
-    }
-  ],
-  "pieces": [
-    {
-      "name": "Environment & floor depth",
-      "status": "winning",
-      "score": 8.0,
-      "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields"
-    },
-    {
-      "name": "Lighting & color grade / post-fx",
-      "status": "winning",
-      "score": 8.0,
-      "note": "EffectComposer bloom + ACES + vignette; moody & cinematic"
-    },
-    {
-      "name": "Combat feel & VFX & damage numbers",
-      "status": "winning",
-      "score": 7.5,
-      "note": "big outlined rising numbers, impact flash, crit rings, shard death bursts"
-    },
-    {
-      "name": "Broadcast HUD (orbs / feed / ticker / panels)",
-      "status": "winning",
-      "score": 7.5,
-      "note": "reads as D4 broadcast; wave-2 polish on orb gloss + skill glyphs"
-    },
-    {
-      "name": "Enemies (crystalline arachnids)",
-      "status": "winning",
-      "score": 7.0,
-      "note": "faceted menacing crystal spiders; add nameplates + hit reactions next"
-    },
-    {
-      "name": "Hero (Carl) & companion (Donut)",
-      "status": "critic",
-      "score": 6.0,
-      "gap": "Carl sits small in frame; some swing poses collapse to a white shape; heart boxers + face lost at distance; camera could frame him larger/closer"
-    },
-    {
-      "name": "Loot, drops & loot boxes",
-      "status": "queued",
-      "score": 0,
-      "note": "book-accurate System loot boxes \u2014 next waves"
-    },
-    {
-      "name": "Inventory & character sheet",
-      "status": "queued",
-      "score": 0,
-      "note": "Frames C/D panels"
-    },
-    {
-      "name": "Boss battle \u2014 the Juicer",
-      "status": "queued",
-      "score": 0,
-      "note": "Frame A set-piece \u2014 floor progression"
-    }
-  ],
-  "log": [
-    {
-      "t": "08:10",
-      "tag": "CRITIC r2",
-      "c": "#3a2a12",
-      "msg": "Integrated Wave 1 judged vs reference: world/lighting/combat now WIN (~8); overall 4.2 \u2192 7.0. Biggest gap named: hero prominence. Carl sent back + whole-game cohesion pass queued."
-    },
-    {
-      "t": "08:08",
-      "tag": "INTEGRATE \u2713",
-      "c": "#1a4a2f",
-      "msg": "Combined build boots clean (errors:[]). World is now a bloom-lit crystal cavern with real depth; AETHER/Physical crits read big and punchy."
-    },
-    {
-      "t": "07:58",
-      "tag": "BUILDER \u2713",
-      "c": "#1a4a2f",
-      "msg": "World builder returned: EffectComposer bloom + ACES grade + vignette, emissive glow-pool ground, depth-banded crystal fields, atmospheric sightlines."
-    },
-    {
-      "t": "07:55",
-      "tag": "BUILDER \u2713",
-      "c": "#1a4a2f",
-      "msg": "Character builder returned: Carl rebuilt as a muscular barbarian (heart boxers + glowing energy axe), Donut with crown, faceted menacing arachnids."
-    },
-    {
-      "t": "07:40",
-      "tag": "BUILDER \u2713",
-      "c": "#1a4a2f",
-      "msg": "Combat-VFX builder returned: big outlined damage numbers, hit sparks, crit rings, shard death bursts, punchier camera kick."
-    },
-    {
-      "t": "07:24",
-      "tag": "WAVE 1",
-      "c": "#12303f",
-      "msg": "Launched 3 parallel builder subagents on the top gaps: world+lighting, hero+companion+enemies, combat feel."
-    },
-    {
-      "t": "07:20",
-      "tag": "FOUNDATION",
-      "c": "#1a4a2f",
-      "msg": "Running 3D build + auto-play Playwright capture harness (stills + ffmpeg clips) + reference rubric live end-to-end."
-    }
+    { "path": "captures/w1_cohesion/shot_01.png", "cap": "After cohesion — Carl prominent, heart boxers readable, Diablo-IV framing" },
+    { "path": "captures/w1_cohesion/shot_02.png", "cap": "Crystal-shard death burst + crit ring, world & bloom intact" }
   ],
   "strip": [
-    "captures/wave1_strip/strip_00.jpg",
-    "captures/wave1_strip/strip_01.jpg",
-    "captures/wave1_strip/strip_02.jpg",
-    "captures/wave1_strip/strip_03.jpg",
-    "captures/wave1_strip/strip_04.jpg",
-    "captures/wave1_strip/strip_05.jpg",
-    "captures/wave1_strip/strip_06.jpg",
-    "captures/wave1_strip/strip_07.jpg",
-    "captures/wave1_strip/strip_08.jpg",
-    "captures/wave1_strip/strip_09.jpg",
-    "captures/wave1_strip/strip_10.jpg",
-    "captures/wave1_strip/strip_11.jpg",
-    "captures/wave1_strip/strip_12.jpg",
-    "captures/wave1_strip/strip_13.jpg",
-    "captures/wave1_strip/strip_14.jpg",
-    "captures/wave1_strip/strip_15.jpg"
+    "captures/w1_cohesion/strip_00.jpg","captures/w1_cohesion/strip_01.jpg","captures/w1_cohesion/strip_02.jpg","captures/w1_cohesion/strip_03.jpg",
+    "captures/w1_cohesion/strip_04.jpg","captures/w1_cohesion/strip_05.jpg","captures/w1_cohesion/strip_06.jpg","captures/w1_cohesion/strip_07.jpg",
+    "captures/w1_cohesion/strip_08.jpg","captures/w1_cohesion/strip_09.jpg","captures/w1_cohesion/strip_10.jpg","captures/w1_cohesion/strip_11.jpg",
+    "captures/w1_cohesion/strip_12.jpg","captures/w1_cohesion/strip_13.jpg","captures/w1_cohesion/strip_14.jpg","captures/w1_cohesion/strip_15.jpg"
+  ],
+  "pieces": [
+    { "name": "Environment & floor depth", "status": "winning", "score": 8.0, "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields" },
+    { "name": "Lighting & color grade / post-fx", "status": "winning", "score": 8.0, "note": "EffectComposer bloom + ACES + vignette; moody & cinematic" },
+    { "name": "Combat feel & VFX & damage numbers", "status": "winning", "score": 7.5, "note": "big outlined rising numbers, impact flash, crit rings, shard death bursts" },
+    { "name": "Broadcast HUD (orbs / feed / ticker / panels)", "status": "winning", "score": 7.5, "note": "reads as D4 broadcast" },
+    { "name": "Enemies (crystalline arachnids)", "status": "winning", "score": 7.0, "note": "faceted menacing crystal spiders" },
+    { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.0, "note": "cohesion pass: prominent, heart boxers read, weighty swing; model polish still possible" },
+    { "name": "Loot, drops & System loot boxes", "status": "building", "score": 0, "gap": "not built yet — rarity beams, ground labels, DCC System loot boxes, gold piles" },
+    { "name": "Inventory & character sheet", "status": "building", "score": 0, "gap": "not built yet — Frames C/D panels (stats, grid, equipment, currency)" },
+    { "name": "Boss battle — the Juicer", "status": "building", "score": 0, "gap": "not built yet — Frame A giant steroid boss, boss bar, telegraphs, rage phase" }
+  ],
+  "log": [
+    { "t": "08:35", "tag": "WAVE 2", "c": "#12303f", "msg": "Launched 3 parallel builders on the missing systems: loot + System loot boxes, inventory + character sheet, and the Juicer boss. A plug-in API lets them attach without touching the game loop." },
+    { "t": "08:28", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass landed: hero prominence fixed (tighter D4 camera, Carl scaled, axe rebuilt so no swing blooms to a white wedge, boxers read), Donut enlarged, scale/color cohered — world & combat wins preserved. Overall 7.0 → 7.3." },
+    { "t": "08:10", "tag": "CRITIC r2", "c": "#3a2a12", "msg": "Integrated Wave 1 judged vs reference: world/lighting/combat WIN (~8); overall 4.2 → 7.0. Biggest gap named: hero prominence. Sent back." },
+    { "t": "07:58", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "World builder: EffectComposer bloom + ACES grade, emissive glow-pool ground, depth-banded crystal fields, atmospheric sightlines." },
+    { "t": "07:55", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Character builder: Carl rebuilt as a muscular barbarian (heart boxers + glowing energy axe), Donut with crown, faceted arachnids." },
+    { "t": "07:40", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Combat-VFX builder: big outlined damage numbers, hit sparks, crit rings, shard death bursts, punchier camera kick." },
+    { "t": "07:20", "tag": "FOUNDATION", "c": "#1a4a2f", "msg": "Running 3D build + auto-play capture harness + reference rubric live end-to-end." }
   ]
 }
