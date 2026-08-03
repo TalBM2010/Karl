@@ -1,11 +1,11 @@
 {
-  "updated": "2026-08-03 09:48 UTC",
-  "wave": 3,
-  "rounds": 6,
-  "overall": 8.3,
-  "note": "Wave 3 landed: Carl now fires spectacular Primal-Warrior abilities in combat — cyan cleave arcs, expanding aether novas, whirlwind, war-cry runes, a persistent aether aura (Frame B's swirling energy), with live action-bar cooldowns. Models sharpened: the Juicer has glowing red veins + separated muscle, Carl has real muscle definition + a structured face, arachnids are gem-like. Overall 8.0 → 8.3.",
+  "updated": "2026-08-03 10:05 UTC",
+  "wave": 4,
+  "rounds": 7,
+  "overall": 8.4,
+  "note": "Wave 3 + cohesion complete: abilities, sharper models, and a skill-bar that reads Diablo-IV-clean during cooldowns. We match all four reference frames at ~8.4/10 and hold up in motion. Wave 4 turns to the books' content 'according to its order': the floor progression (Floor 1 → the Over City) + the System loot-box OPENING ceremony (the reward mechanism).",
   "latestShots": [
-    { "path": "captures/w3_main/shot_01.png", "cap": "Cleave arc + aether aura on Carl, veiny Juicer looming (Frame B energy + Frame A boss)" },
+    { "path": "captures/w3_combat/shot_02.png", "cap": "Abilities + readable skill-bar cooldowns, aura on Carl, veiny Juicer (Wave 3 final)" },
     { "path": "captures/w3_main/shot_05.png", "cap": "Aether Nova shockwave + war-cry rune, glowing-vein Juicer" },
     { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
     { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
@@ -27,10 +27,14 @@
     { "name": "Enemies (crystalline arachnids)", "status": "winning", "score": 7.0, "note": "faceted menacing crystal spiders" },
     { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.5, "note": "prominent, heart boxers read, Donut now clearly visible; model fidelity still improvable" },
     { "name": "Skill / ability VFX (Frame B aether)", "status": "winning", "score": 8.5, "note": "5 auto-firing abilities + aether aura + live action-bar cooldowns; combat reads powered-up in motion" },
-    { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "winning", "score": 7.5, "gap": "much sharper — Juicer veins, Carl muscle/face, gem spiders; deeper skill-bar readability during cooldown to smooth" }
+    { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "winning", "score": 7.5, "note": "sharper — Juicer veins, Carl muscle/face, gem spiders; AAA sculpt fidelity is the honest ceiling" },
+    { "name": "Floor progression (books' order)", "status": "building", "score": 0, "gap": "one level so far — build the floor sequence (Floor 1 ruins → Over City) + floor-intro transitions" },
+    { "name": "Loot-box opening ceremony (reward mechanism)", "status": "building", "score": 0, "gap": "boxes drop but don't have the dramatic DCC open-and-reveal ceremony yet" }
   ],
   "log": [
-    { "t": "09:48", "tag": "CRITIC r6", "c": "#3a2a12", "msg": "Wave 3 judged vs reference: abilities ~8.5 (Frame-B swirling aether now firing in combat), models ~7.5 (veiny Juicer, defined Carl, gem arachnids). Overall 8.0 → 8.3. Minor: skill-bar dims when many abilities cool at once." },
+    { "t": "10:05", "tag": "WAVE 4", "c": "#12303f", "msg": "Turning to the books' content 'according to its order': floor progression (Floor 1 → the Over City) + the System loot-box opening ceremony (reward reveal)." },
+    { "t": "10:02", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #3: skill-bar icons now read clearly through cooldown sweeps (Diablo-IV dimmed-icon + wipe + timer); cleave bloom trimmed so Carl stays visible; colors harmonized. Wins intact. 8.3 → 8.4." },
+    { "t": "09:48", "tag": "CRITIC r6", "c": "#3a2a12", "msg": "Wave 3 judged vs reference: abilities ~8.5 (Frame-B swirling aether now firing in combat), models ~7.5 (veiny Juicer, defined Carl, gem arachnids). Overall 8.0 → 8.3." },
     { "t": "09:25", "tag": "WAVE 3", "c": "#12303f", "msg": "Launched builders on the two honest remaining gaps: spectacular skill/ability VFX in combat, and a model-fidelity polish on Carl + the Juicer + arachnids." },
     { "t": "09:22", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #2: boss-fight camera frames the full Juicer head-to-feet, Donut always visible beside Carl, loot labels kept off the HUD. Wins intact. 7.7 → 8.0." },
     { "t": "09:05", "tag": "CRITIC r4", "c": "#3a2a12", "msg": "Wave 2 judged vs reference: Juicer boss ~8 (Frame A), character sheet ~8.5 (D), inventory ~8 (C), loot ~7.5 (B). Overall 7.3 → 7.7. We now cover all four reference frames." },

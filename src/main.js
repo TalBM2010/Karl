@@ -146,6 +146,6 @@ addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.upd
 document.getElementById('loading').style.display='none'; window.__READY=true;
 
 // Auto-load optional plug-in modules if present; each exports init(api). Missing = silently skipped.
-for(const m of ['loot','boss','screens','abilities']){ import(`./${m}.js`).then(mod=>mod.init&&mod.init(KARL)).catch(()=>{}); }
+for(const m of ['loot','boss','screens','abilities','floors','lootbox']){ import(`./${m}.js`).then(mod=>mod.init&&mod.init(KARL)).catch(()=>{}); }
 
 requestAnimationFrame(frame);
