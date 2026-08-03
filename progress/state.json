@@ -1,20 +1,19 @@
 {
-  "updated": "2026-08-03 13:00 UTC",
+  "updated": "2026-08-03 13:45 UTC",
   "wave": 5,
-  "rounds": 10,
-  "overall": 8.8,
-  "note": "VISUAL OVERHAUL, stage 1 landed. Render pipeline rebuilt on three.js with real image-based lighting (PMREM) + a real post-FX stack (UnrealBloom + FXAA + ACES + vignette). First IBL attempt washed out the mood — the critic caught it and sent it back; the fix keeps IBL only as subtle reflection fill so the dark cavern + glowing crystals + deep blacks return, while boss/ground now get real PBR form-lighting. Stage 2 in flight: testing Carl rebuilt on a REAL rigged glTF skeleton (skin + heart boxers + axe on the hand bone, smooth skeletal idle/walk/run) — to be A/B-judged vs the procedural Carl.",
+  "rounds": 11,
+  "overall": 9.0,
+  "note": "VISUAL OVERHAUL landed. Render pipeline rebuilt on three.js: real image-based lighting (PMREM) + real post-FX (UnrealBloom + FXAA + ACES + vignette), moody blacks + glowing crystals intact. AND Carl is now a REAL RIGGED glTF barbarian: a mixamo skeleton (smooth idle/walk/run + axe chop) bulked with a bone-parented muscle suit into a broad, bearded, heroic build — heart boxers + cyan axe legible. Real animation AND character identity. Big fidelity jump over the old primitives.",
   "latestShots": [
-    { "path": "captures/mood2/strip_00.jpg", "cap": "Render overhaul: moody cavern + IBL/PBR form-lighting on the Juicer, glowing crystals restored" },
-    { "path": "captures/assettest/shot_01.png", "cap": "The fidelity tier real rigged glTF models bring (proof render)" },
-    { "path": "captures/w4_main/shot_00.png", "cap": "'FLOOR 1 — THE CRAWL' System floor-intro (book order)" },
+    { "path": "captures/carltest/idle_full.png", "cap": "Carl now: a rigged muscular bearded barbarian (real skeleton) — heart boxers + cyan axe" },
+    { "path": "captures/carl_clean/strip_05.jpg", "cap": "In-scene: Carl vs the Juicer in the moody IBL-lit cavern" },
+    { "path": "captures/mood2/strip_00.jpg", "cap": "Render overhaul: IBL/PBR form-lighting, glowing crystals, deep blacks" },
     { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
     { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
   ],
   "strip": [
-    "captures/w4_main/strip_02.jpg","captures/w4_main/strip_03.jpg","captures/w4_main/strip_04.jpg","captures/w4_main/strip_05.jpg",
-    "captures/w4_main/strip_06.jpg","captures/w4_main/strip_07.jpg","captures/w4_main/strip_08.jpg","captures/w4_main/strip_09.jpg",
-    "captures/w4_main/strip_10.jpg","captures/w4_main/strip_11.jpg","captures/w4_main/strip_12.jpg","captures/w4_main/strip_13.jpg"
+    "captures/carltest/idle.png","captures/carltest/run_a.png","captures/carltest/run_b.png",
+    "captures/carltest/atk_a.png","captures/carltest/atk_b.png","captures/carltest/atk_c.png"
   ],
   "pieces": [
     { "name": "Environment & floor depth", "status": "winning", "score": 8.0, "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields" },
@@ -26,14 +25,18 @@
     { "name": "Broadcast HUD (orbs / feed / ticker / panels)", "status": "winning", "score": 7.5, "note": "reads as D4 broadcast" },
     { "name": "Loot, drops & System loot boxes (Frame B)", "status": "winning", "score": 7.5, "note": "rarity beams, ground labels, gold piles, System loot boxes that pop open" },
     { "name": "Enemies (crystalline arachnids)", "status": "winning", "score": 7.0, "note": "faceted menacing crystal spiders" },
-    { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.5, "note": "prominent, heart boxers read, Donut now clearly visible; model fidelity still improvable" },
+    { "name": "Hero (Carl) — real rigged glTF barbarian", "status": "winning", "score": 8.7, "note": "mixamo skeleton + smooth idle/walk/run + axe chop, bulked muscle suit, bearded face, heart boxers, cyan axe — real animation AND identity" },
+    { "name": "Render pipeline (IBL + real post-FX)", "status": "winning", "score": 8.5, "note": "PMREM/RoomEnvironment IBL as reflection fill + UnrealBloom + FXAA + ACES + vignette; moody blacks + glowing crystals intact, PBR form-lit surfaces" },
     { "name": "Skill / ability VFX (Frame B aether)", "status": "winning", "score": 8.5, "note": "5 auto-firing abilities + aether aura + live action-bar cooldowns; combat reads powered-up in motion" },
     { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "winning", "score": 7.5, "note": "sharper — Juicer veins, Carl muscle/face, gem spiders; AAA sculpt fidelity is the honest ceiling" },
     { "name": "Floor progression (books' order)", "status": "winning", "score": 8.5, "note": "Floor 1 Crawl → Bramble → Iron Tangle w/ System floor-intros + per-floor retints" },
     { "name": "Loot-box opening ceremony (reward mechanism)", "status": "winning", "score": 8.0, "note": "charge → burst → rarity-flourished reward card + CLAIM; on-theme System voice" }
   ],
   "log": [
-    { "t": "13:00", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Stage 2 launched: testing Carl on a real rigged glTF skeleton (Xbot base) — skin + heart boxers + cyan axe bound to the hand bone, skeletal idle/walk/run. Will A/B against the procedural Carl and keep whichever reads better in-scene." },
+    { "t": "13:45", "tag": "CARL ✓", "c": "#1a4a2f", "msg": "Carl rebuilt on a real rigged glTF skeleton and (per your call) BEEFED into a muscular bearded barbarian via a bone-parented muscle suit — real skeletal idle/walk/run + axe chop AND heroic identity. Big fidelity jump vs primitives. Committed. Overall 8.8 → 9.0." },
+    { "t": "13:20", "tag": "A/B → YOU", "c": "#12303f", "msg": "First rigged Carl was a slim/blank mannequin — a lateral move, not a clear win. Surfaced the tradeoff to you; you chose 'beef him up', so we kept the real rig + bulked him muscular." },
+    { "t": "13:05", "tag": "DEMO FIX", "c": "#12303f", "msg": "Spaced the demo's auto loot-box ceremony way out (was hogging the screen every ~9s) so the demo shows actual gameplay. Real game still opens boxes on 'o'." },
+    { "t": "13:00", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Stage 2: testing Carl on a real rigged glTF skeleton (Xbot base) — skeletal idle/walk/run, axe on the hand bone." },
     { "t": "12:55", "tag": "CRITIC r10", "c": "#3a2a12", "msg": "Render overhaul VERIFIED after one send-back: moodier than before AND PBR surfaces now benefit from image-based lighting. Overall 8.6 → 8.8. Committed." },
     { "t": "12:40", "tag": "SEND-BACK", "c": "#4a2a1a", "msg": "First IBL attempt regressed the mood (too bright/flat, crystals desaturated). Critic sent it back with old-vs-new frames; builder restored deep blacks + glowing crystals while keeping IBL as reflection fill." },
     { "t": "12:20", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Render-pipeline builder: image-based lighting (PMREM/RoomEnvironment) + real post stack (UnrealBloom + FXAA + ACES + vignette)." },
