@@ -42,20 +42,21 @@ export function buildAxe(){
   // leather wrap rings on the grip
   for(let i=0;i<4;i++){ const wrap=new THREE.Mesh(new THREE.TorusGeometry(.058,.016,6,10), new THREE.MeshStandardMaterial({color:0x14100a,roughness:.9}));
     wrap.position.y=-.5-i*.13; wrap.rotation.x=Math.PI/2; axe.add(wrap); }
-  const pommel=new THREE.Mesh(new THREE.SphereGeometry(.085,12,12), new THREE.MeshStandardMaterial({color:0x8fd6ff,emissive:0x2f8fff,emissiveIntensity:1.7,roughness:.3}));
+  const pommel=new THREE.Mesh(new THREE.SphereGeometry(.085,12,12), new THREE.MeshStandardMaterial({color:0x8fd6ff,emissive:0x2f8fff,emissiveIntensity:.9,roughness:.3}));
   pommel.position.y=-.86; axe.add(pommel);
   // double-bit head: compact, saturated-cyan flared blades. 4-seg (diamond edge) +
   // thinned front-to-back so it reads as an AXE HEAD, never a flat white triangle when
-  // the swing turns it face-on. Saturated blue keeps bloom a cyan halo, not a white blob.
-  const bladeMat=new THREE.MeshStandardMaterial({color:0x5fc2ff,emissive:0x2a8fff,emissiveIntensity:1.8,metalness:.25,roughness:.16,transparent:true,opacity:.94,flatShading:true});
+  // the swing turns it face-on. Emissive kept MODERATE so it glows cyan and the blade
+  // SHAPE stays legible instead of blowing out to a white flare under bloom.
+  const bladeMat=new THREE.MeshStandardMaterial({color:0x64c6ff,emissive:0x2586ff,emissiveIntensity:.85,metalness:.3,roughness:.18,flatShading:true});
   for(const s of [-1,1]){
     const bit=new THREE.Mesh(new THREE.ConeGeometry(.30,.56,4), bladeMat);
     bit.position.set(.20*s,.9,0); bit.rotation.z=-(Math.PI/2.25)*s; bit.scale.set(1,1.05,.55); axe.add(bit);
   }
-  // bright energy core where the bits meet the haft (focal glow, dialed back from white)
-  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.16,0), new THREE.MeshStandardMaterial({color:0xbfeeff,emissive:0x79ceff,emissiveIntensity:2.3,roughness:.1}));
+  // energy core where the bits meet the haft (focal cyan glow, not a white blob)
+  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.15,0), new THREE.MeshStandardMaterial({color:0x9fe0ff,emissive:0x4fb0ff,emissiveIntensity:1.15,roughness:.15}));
   core.position.y=.9; axe.add(core);
-  const glow=new THREE.PointLight(0x5ec0ff,4.2,8,2); glow.position.y=.9; axe.add(glow);
+  const glow=new THREE.PointLight(0x5ec0ff,1.9,6,2); glow.position.y=.9; axe.add(glow);
   return axe;
 }
 
@@ -85,11 +86,16 @@ const CHOP_DUR=0.42;           // seconds — one overhead attack chop
 export function buildCarl(){
   const g=new THREE.Group();
   const bump=skinBumpTex();
-  // warm bare-skin material (shared by the whole body so he reads as a bare-chested man)
-  const skin=new THREE.MeshStandardMaterial({color:0xd39760, roughness:.6, metalness:0, bumpMap:bump, bumpScale:.015});
-  const hairMat=new THREE.MeshStandardMaterial({color:0x201009, roughness:.95});
-  const whiteMat=new THREE.MeshStandardMaterial({color:0xe9e6dd, roughness:.85}); // warm off-white so bloom doesn't blow the boxers to a blob
-  const heartMat=new THREE.MeshStandardMaterial({color:0xff3358, emissive:0xd61438, emissiveIntensity:1.15, roughness:.5});
+  // Warm bare-skin materials. Colour pushed WARM (+ a touch of warm emissive) so Carl
+  // reads as sun-caught tan flesh rather than cold/blue under the scene's teal IBL.
+  // Muscle sculpt = lit "crown" skin on the muscle bellies + thin dark "groove" skin in
+  // the separations (the procedural-Carl trick, here parented to bones so it animates).
+  const skin  =new THREE.MeshStandardMaterial({color:0xe0975a, roughness:.6,  metalness:0, emissive:0x2a1206, emissiveIntensity:.14, bumpMap:bump, bumpScale:.018});
+  const skinLt=new THREE.MeshStandardMaterial({color:0xf3b878, roughness:.5,  metalness:0, emissive:0x341708, emissiveIntensity:.16, bumpMap:bump, bumpScale:.018}); // sun-caught muscle crown
+  const skinDk=new THREE.MeshStandardMaterial({color:0x94592f, roughness:.7,  metalness:0, bumpMap:bump, bumpScale:.014}); // shadow groove between muscles
+  const hairMat=new THREE.MeshStandardMaterial({color:0x241209, roughness:.95});
+  const whiteMat=new THREE.MeshStandardMaterial({color:0xe4dfd4, roughness:.88}); // warm off-white so bloom doesn't blow the boxers to a blob
+  const heartMat=new THREE.MeshStandardMaterial({color:0xff3358, emissive:0xd61438, emissiveIntensity:1.05, roughness:.5});
 
   // ---- live state, populated on load; update()/attack() close over these -----
   let mixer=null, model=null;
@@ -97,11 +103,19 @@ export function buildCarl(){
   let attackT=0;                // remaining seconds of the current chop
   let rArm=null, rFore=null, rShoulder=null; // bones the chop rotates
 
-  // Attach a holder to a named bone that neutralises the bone's world scale, so
-  // its children are authored in world metres. boneWorldScale is uniform here.
-  function boneHolder(name, boneWorldScale){
-    const bone=model.getObjectByName(name); if(!bone) return null;
-    const h=new THREE.Group(); h.scale.setScalar(1/boneWorldScale); bone.add(h); return h;
+  // Attach a holder to a named bone that neutralises the bone's world scale PER-AXIS
+  // (so it works even after non-uniform bone scaling), giving a child space that is
+  // world-aligned world METRES. Everything below is authored in those metres.
+  function boneHolder(name){
+    const bone=model&&model.getObjectByName(name); if(!bone) return null;
+    bone.updateWorldMatrix(true,false);
+    const ws=new THREE.Vector3(); bone.getWorldScale(ws);
+    const h=new THREE.Group(); h.scale.set(1/ws.x,1/ws.y,1/ws.z); bone.add(h); return h;
+  }
+  // thin dark groove box (fakes the AO shadow line between two muscle bellies)
+  function groove(holder,x,y,z,w,h,d,rx=0,rz=0){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), skinDk);
+    m.position.set(x,y,z); m.rotation.set(rx,0,rz); holder.add(m); return m;
   }
 
   // ---- HEART-PRINT BOXER SHORTS (child of the Hips bone → sways with the pelvis)
@@ -132,22 +146,93 @@ export function buildCarl(){
     return s;
   }
 
-  // ---- DARK HAIR + SHORT BEARD (child of the Head bone) ----------------------
+  // ---- HEROIC BEARDED HEAD (child of the Head bone) --------------------------
+  // The Head bone sits at the neck/jaw line; the visible skull crown is ~0.2m ABOVE
+  // it. We add real facial STRUCTURE (heavy brow, cheekbones, squared jaw, nose,
+  // deep-set eyes), a full dark BEARD and swept-back hair so the face reads at range.
   function makeHair(){
-    // The Head bone sits at the neck/jaw line; the visible skull crown is ~0.18-0.22m
-    // ABOVE it. Place the hair cap high on the crown and the beard down at the jaw.
     const h=new THREE.Group();
-    // swept-back hair cap (upper hemisphere) sitting on the crown
-    const cap=new THREE.Mesh(new THREE.SphereGeometry(.135,18,16,0,Math.PI*2,0,1.75), hairMat);
-    cap.position.set(0,.17,-.01); cap.scale.set(1.04,1.05,1.1); h.add(cap);
-    // beard wrapping the lower jaw (lower band of a sphere)
-    const beard=new THREE.Mesh(new THREE.SphereGeometry(.115,18,14,0,Math.PI*2,Math.PI*0.5,Math.PI*0.52), hairMat);
-    beard.position.set(0,.05,.02); beard.scale.set(1.04,1.2,1.14); h.add(beard);
-    for(const sd of [-1,1]){ const side=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8), hairMat); // sideburns joining hair→beard
-      side.position.set(.1*sd,.11,.02); side.scale.set(.6,1.3,.9); h.add(side); }
-    const stache=new THREE.Mesh(new THREE.BoxGeometry(.075,.024,.03), hairMat); stache.position.set(0,.07,.12); h.add(stache);
+    // squared jaw / lower-face mass giving the head a strong male structure
+    const jaw=new THREE.Mesh(new THREE.SphereGeometry(.115,16,14), skin); jaw.position.set(0,.02,.03); jaw.scale.set(1.02,.82,1.0); h.add(jaw);
+    // cheekbones
+    for(const sd of [-1,1]){ const ch=new THREE.Mesh(new THREE.SphereGeometry(.045,10,8), skinLt); ch.position.set(.07*sd,.08,.1); ch.scale.set(.9,.7,.7); h.add(ch); }
+    // heavy brow ridge — the strongest "face" read at game distance
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(.17,.035,.05), skinDk); brow.position.set(0,.13,.115); brow.rotation.x=.28; h.add(brow);
+    // nose
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.03,.075,6), skin); nose.position.set(0,.08,.14); nose.rotation.x=Math.PI*.5; nose.scale.set(1,1,.7); h.add(nose);
+    // deep-set eyes under the brow
+    for(const sd of [-1,1]){ const eye=new THREE.Mesh(new THREE.SphereGeometry(.017,8,8), new THREE.MeshStandardMaterial({color:0x140b06}));
+      eye.position.set(.05*sd,.105,.125); h.add(eye); }
+    // swept-back hair cap sitting high on the crown
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(.14,18,16,0,Math.PI*2,0,1.8), hairMat);
+    cap.position.set(0,.17,-.01); cap.scale.set(1.05,1.06,1.12); h.add(cap);
+    // FULL beard wrapping the whole jaw (lower band of a sphere) — thick, not a wisp
+    const beard=new THREE.Mesh(new THREE.SphereGeometry(.125,18,16,0,Math.PI*2,Math.PI*0.46,Math.PI*0.56), hairMat);
+    beard.position.set(0,.06,.015); beard.scale.set(1.08,1.28,1.16); h.add(beard);
+    // beard mass under the chin so it reads full from the iso cam
+    const chinB=new THREE.Mesh(new THREE.SphereGeometry(.075,14,12), hairMat); chinB.position.set(0,-.03,.075); chinB.scale.set(1.1,1.0,1.0); h.add(chinB);
+    for(const sd of [-1,1]){ const side=new THREE.Mesh(new THREE.SphereGeometry(.055,10,8), hairMat); // sideburns joining hair→beard
+      side.position.set(.105*sd,.115,.02); side.scale.set(.65,1.4,.95); h.add(side); }
+    const stache=new THREE.Mesh(new THREE.BoxGeometry(.085,.028,.035), hairMat); stache.position.set(0,.075,.125); h.add(stache);
     h.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
     return h;
+  }
+
+  // ---- MUSCLE SUIT ----------------------------------------------------------
+  // Sculpted muscle VOLUME parented to the skeleton (so it deforms with the anim):
+  // broad traps/delts + slabby pecs + a cut six-pack + beefy arms/thighs/calves.
+  // Lit skin crowns on the bellies, thin dark grooves in the separations = "built".
+  function buildMuscleSuit(){
+    // TORSO — on Spine2 (upper chest/shoulders). Offsets in world metres from the joint.
+    const t=boneHolder('mixamorigSpine2');
+    if(t){
+      // broad shoulder/trap mass + wide deltoid caps (these own the V-taper WIDTH)
+      for(const s of [-1,1]){ const trap=new THREE.Mesh(new THREE.SphereGeometry(.15,14,12), skinLt); trap.position.set(.15*s,.12,-.03); trap.scale.set(1.1,.72,.95); t.add(trap); }
+      for(const s of [-1,1]){ const delt=new THREE.Mesh(new THREE.SphereGeometry(.16,14,12), skinLt); delt.position.set(.28*s,.02,0); delt.scale.set(1,1.05,1.05); t.add(delt); }
+      // chest core slab (broad) + two angled pec slabs with a sternum groove
+      const chest=new THREE.Mesh(new THREE.SphereGeometry(.24,16,14), skin); chest.position.set(0,-.02,.05); chest.scale.set(1.55,.95,.85); t.add(chest);
+      for(const s of [-1,1]){ const pec=new THREE.Mesh(new THREE.SphereGeometry(.16,16,14), skinLt); pec.position.set(.12*s,-.02,.15); pec.scale.set(1.05,.72,.72); pec.rotation.z=-.18*s; t.add(pec); }
+      groove(t, 0,-.02,.2, .04,.24,.09);                       // sternum
+      for(const s of [-1,1]) groove(t, .12*s,-.11,.19, .24,.04,.08);  // under-pec fold
+      // lats sweeping toward the waist (taper)
+      for(const s of [-1,1]){ const lat=new THREE.Mesh(new THREE.SphereGeometry(.15,12,10), skin); lat.position.set(.22*s,-.16,-.03); lat.scale.set(.62,1.15,.85); t.add(lat); }
+    }
+    // ABS — on Spine (lower torso), a cut six-pack + linea alba + obliques
+    const ab=boneHolder('mixamorigSpine');
+    if(ab){
+      for(let r=0;r<3;r++) for(const s of [-1,1]){ const m=new THREE.Mesh(new THREE.SphereGeometry(.058,12,10), skinLt);
+        m.position.set(.06*s,.05-r*.1,.12); m.scale.set(1.05,.9,.5); ab.add(m); }
+      groove(ab, 0,-.05,.13, .03,.36,.06);                     // linea alba
+      for(let r=0;r<2;r++) groove(ab, 0,.0-r*.1,.13, .22,.03,.06); // tendon lines
+      for(const s of [-1,1]){ const ob=new THREE.Mesh(new THREE.SphereGeometry(.06,10,8), skin); ob.position.set(.16*s,-.06,.06); ob.scale.set(.7,1.0,.7); ab.add(ob); }
+    }
+    // ARMS — bicep peak (lit) + tricep, along the upper-arm axis (toward the elbow:
+    // -X for the RIGHT arm, +X for the LEFT, in the bind T-pose = holder space).
+    for(const [bone,dir] of [['mixamorigRightArm',-1],['mixamorigLeftArm',1]]){
+      const a=boneHolder(bone); if(!a) continue;
+      const bi=new THREE.Mesh(new THREE.SphereGeometry(.085,12,10), skinLt); bi.position.set(.14*dir,-.01,.05); bi.scale.set(1.5,.85,.85); a.add(bi);
+      const tri=new THREE.Mesh(new THREE.SphereGeometry(.08,10,8), skin); tri.position.set(.15*dir,-.02,-.06); tri.scale.set(1.4,.85,.8); a.add(tri);
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(.09,12,10), skinLt); cap.position.set(.02*dir,.02,0); a.add(cap); // delt cap over the shoulder
+    }
+    for(const [bone,dir] of [['mixamorigRightForeArm',-1],['mixamorigLeftForeArm',1]]){
+      const f=boneHolder(bone); if(!f) continue;
+      const fm=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8), skinLt); fm.position.set(.11*dir,0,.02); fm.scale.set(1.5,.85,.85); f.add(fm);
+    }
+    // THIGHS — quad sweep (lit) + inner-thigh teardrop, split by a groove
+    for(const bone of ['mixamorigRightUpLeg','mixamorigLeftUpLeg']){
+      const q=boneHolder(bone); if(!q) continue;
+      const quad=new THREE.Mesh(new THREE.SphereGeometry(.12,12,10), skinLt); quad.position.set(0,-.22,.07); quad.scale.set(.85,1.6,.75); q.add(quad);
+      const inner=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8), skinLt); inner.position.set(.04,-.3,.05); inner.scale.set(.8,1.0,.7); q.add(inner);
+      groove(q, 0,-.26,.11, .03,.32,.05);
+    }
+    // CALVES — gastroc diamond
+    for(const bone of ['mixamorigRightLeg','mixamorigLeftLeg']){
+      const c=boneHolder(bone); if(!c) continue;
+      const calf=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8), skinLt); calf.position.set(0,-.2,-.05); calf.scale.set(1.0,1.5,.75); c.add(calf);
+    }
+    // NECK — thicker sterno mass so the head doesn't perch on a thin stalk
+    const nk=boneHolder('mixamorigNeck');
+    if(nk){ const n=new THREE.Mesh(new THREE.CylinderGeometry(.075,.1,.13,12), skin); n.position.set(0,.02,0); nk.add(n); }
   }
 
   // ---- VISIBLE FALLBACK so the game never breaks if the glTF fails to load ----
@@ -167,27 +252,39 @@ export function buildCarl(){
     model=gltf.scene;
     // retexture every skinned mesh to warm bare skin (was a grey mannequin bodysuit)
     model.traverse(o=>{ if(o.isMesh||o.isSkinnedMesh){ o.material=skin; o.castShadow=true; o.frustumCulled=false; } });
-    // scale to CARL_HEIGHT and drop feet to y≈0
+
+    // ---- BULK THE RIG INTO A HEAVYWEIGHT: broaden the frame by scaling bones on the
+    //      skeleton so the SKINNED MESH itself deforms bigger (not just add-on volume).
+    //      Scales kept UNIFORM per bone (non-uniform scale shears rotated child bones),
+    //      with COUNTER-scales on leaf bones so the head/hands/feet stay proportioned.
+    const B=n=>model.getObjectByName(n);
+    const S2=1.16, ARM=1.16, LEG=1.2;            // broaden upper body / arms / thighs
+    const setS=(n,v)=>{ const b=B(n); if(b) b.scale.setScalar(v); };
+    setS('mixamorigSpine2', S2);                 // broad chest + pushes shoulders wide
+    setS('mixamorigNeck', 1/S2);                 // counter → head stays normal size
+    setS('mixamorigRightArm', ARM); setS('mixamorigLeftArm', ARM);     // beefy upper arms
+    setS('mixamorigRightHand', 1/(S2*ARM)); setS('mixamorigLeftHand', 1/(S2*ARM)); // counter hands (keeps the axe grip sized right)
+    setS('mixamorigRightUpLeg', LEG); setS('mixamorigLeftUpLeg', LEG); // thick thighs
+    setS('mixamorigRightFoot', 1/LEG); setS('mixamorigLeftFoot', 1/LEG); // counter feet
+
+    // scale to CARL_HEIGHT and drop feet to y≈0 (after bulking, so height stays right)
     model.updateMatrixWorld(true);
     const box=new THREE.Box3().setFromObject(model);
     const F=CARL_HEIGHT/(box.max.y-box.min.y);
     model.scale.multiplyScalar(F);
     model.position.y=-box.min.y*F;
     g.add(model);
-    // TRUE bone world scale = model scale × the Armature's internal 0.01 (mixamo cm→m).
-    // (model is the glTF scene WRAPPER at scale F; the skeleton lives under a child
-    // Armature scaled 0.01, so a bone's world scale is F*0.01, NOT model.scale.)
     model.updateWorldMatrix(true,true);
-    const _ws=new THREE.Vector3();
-    model.getObjectByName('mixamorigHips').getWorldScale(_ws);
-    const boneWorldScale=_ws.x;
 
-    // accessories on their bones
-    const hipsH=boneHolder('mixamorigHips', boneWorldScale);
+    // sculpted muscle volume parented to the (now broader) skeleton
+    buildMuscleSuit();
+
+    // accessories on their bones (holders compute each bone's own world scale)
+    const hipsH=boneHolder('mixamorigHips');
     if(hipsH){ hipsH.add(makeShorts()); }
-    const headH=boneHolder('mixamorigHead', boneWorldScale);
+    const headH=boneHolder('mixamorigHead');
     if(headH){ headH.add(makeHair()); }
-    const handH=boneHolder('mixamorigRightHand', boneWorldScale);
+    const handH=boneHolder('mixamorigRightHand');
     if(handH){ const axe=buildAxe();
       // seat the haft in the fist: grip near origin, head angled up-forward so it
       // reads as gripped and swings with the hand through the locomotion + chop.

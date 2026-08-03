@@ -520,7 +520,9 @@ export function init(api){
   if(isAuto){
     let cyc=0; const order=['Bronze','Silver','Gold','Platinum'];
     setTimeout(function loop(){
-      let wait=9000;
+      // Spaced well apart so the DEMO mostly shows gameplay (the ceremony is a rare highlight,
+      // not a constant screen-hog). In the real game it only opens on the player's 'o' press.
+      let wait=26000;
       if(!active){
         // Defer (don't skip) while a floor-intro or C/I screen owns the frame, so the ceremony
         // still fires — and gets captured — the instant that overlay clears, instead of clashing.
@@ -528,6 +530,6 @@ export function init(api){
         else { open(order[cyc++ % order.length]); }
       }
       setTimeout(loop, wait);
-    }, 4000);
+    }, 8000);
   }
 }

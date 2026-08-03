@@ -48,10 +48,39 @@ game runs with `"errors":[]`, the boss/donut/enemies/HUD are untouched and still
   skin-toned capsule + axe placeholder is shown if the glTF fails, so the game never breaks.
   Skinned meshes get `frustumCulled=false`.
 
+## Update — bulked into a heroic barbarian (round 2)
+The first pass read as a scrawny mannequin. Kept the rig + skeletal animation and made him
+**BUILT**, editing only `buildCarl` in `src/actors.js`:
+
+1. **Broader frame via bone-scaling** the skinned rig itself: Spine2 ×1.16 (broad chest +
+   pushes shoulders wide), both Arms ×1.16 (beefy upper arms), both UpLegs ×1.2 (thick
+   thighs). Scales kept **uniform** per bone (non-uniform scale shears rotated child bones)
+   with **counter-scales** on Neck (÷1.16), Hands (÷1.16²) and Feet (÷1.2) so head/hands/feet
+   stay proportioned and the axe grip keeps its size. Done BEFORE the height-fit so he stays
+   ~2.4u.
+2. **Muscle suit** (`buildMuscleSuit`) — sculpted volume parented to bones so it deforms with
+   the animation: broad traps + wide deltoid caps (own the V-taper width) + slabby pecs on
+   Spine2, a cut six-pack + linea-alba/tendon grooves + obliques on Spine, bicep/tricep on the
+   Arms, forearm bellies, quad sweeps on the thighs, gastroc on the calves, a thicker neck.
+   Lit "crown" skin on the bellies + thin dark "groove" skin in the separations = reads cut.
+3. **Real bearded face** on the Head bone: heavy brow, cheekbones, squared jaw, nose, deep-set
+   eyes, a FULL dark beard (jaw wrap + under-chin mass + sideburns + mustache) and swept-back
+   hair — reads clearly at range.
+4. **Warmer skin**: colour pushed warm (`0xe0975a`) with a touch of warm emissive so he reads
+   as tan flesh, not cold/blue under the teal IBL.
+5. **Axe de-bloomed**: blade/core/pommel emissive and the PointLight intensity dropped (glow
+   1.9, blade emissive .85) so it glows cyan and the blade SHAPE stays legible instead of
+   blowing out to a white flare.
+
+Accessory holders were generalised to compute each bone's own (post-scaling) world scale
+**per-axis**, so shorts/hair/axe/muscle all stay correctly sized after bulking. Re-verified in
+`captures/carltest` (idle_full/run_a/run_b/atk_a-c) and in-game (`captures/gltfcarl`): no
+shearing, smooth idle/run/chop, heart boxers + cyan axe legible.
+
 ## Verdict
-Carl **loads and animates cleanly** — smooth skeletal idle/run + axe-swinging chops, with the
-heart boxers and cyan axe clearly legible in isolation and at game scale (`captures/carltest`,
-`captures/gltfcarl`). This is a clear visual step up from the procedural primitive Carl in
-motion quality and silhouette. Minor: the short beard is subtle at game distance, and skin
-reads a touch cool under the dim teal IBL (same lighting the procedural hero used). FPS ~22
-under headless software GL (skinned mesh + boss); fine on real GPU.
+Carl now **loads and animates cleanly as a muscular, bearded, heroic barbarian** — broad
+V-taper torso, big arms/thighs, six-pack, full beard, warm tan skin, gripping a legible cyan
+double-bit axe that swings with the skeletal idle/run + additive overhead chop. Clearly reads
+as heavyweight and heroic both in isolation and at game scale beside the boss. Game runs with
+`"errors":[]`, ~24fps under headless software GL (skinned mesh + muscle suit + boss); fine on
+real GPU. `main.js` animation wiring untouched.
