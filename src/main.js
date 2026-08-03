@@ -106,7 +106,7 @@ function frame(now){
   hero.mp=Math.min(hero.maxmp, hero.mp+dt*24); hud.update(hero); hud.setKills(KILLS);
   window.__gameState={fps:Math.round(fps), enemies:enemies.filter(e=>!e.dead).length, kills:KILLS, hp:Math.round(hero.hp), ready:true};
 
-  renderer.render(scene,camera); requestAnimationFrame(frame);
+  env.render(camera); requestAnimationFrame(frame);
 }
 function killEnemy(e){ e.dead=true; KILLS++; vfx.addShake(.3); vfx.killBurst(e.obj.position);
   setTimeout(()=>{ const a=rand(0,6.28),r=rand(8,14); spawnSpider(Math.cos(a)*r+hero.pos.x, Math.sin(a)*r+hero.pos.z, rand(.8,1.3)); },1200); }
