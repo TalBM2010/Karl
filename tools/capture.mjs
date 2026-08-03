@@ -17,6 +17,7 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((a,v,i,arr)=>{
 const OUT = path.resolve(ROOT, args.out || 'captures/latest');
 const SHOTS = +(args.shots||5), GAP = +(args.gap||1500), W=+(args.w||1600), H=+(args.h||1000);
 const VIDEO = !!args.video, CLIPSECS = +(args.clipsecs||6);
+const STRIP = +(args.strip||0), STRIPGAP = +(args.stripgap||160);
 const URLPATH = args.path || '/index.html';
 fs.mkdirSync(OUT, { recursive:true });
 
@@ -55,23 +56,25 @@ for(let i=0;i<SHOTS;i++){
 let state={};
 try { state = await page.evaluate(()=>window.__gameState||{}); } catch {}
 
+// Motion filmstrip: rapid frames for in-page flipbook + critic motion review.
+// (The bundled Playwright ffmpeg only has the image2 muxer, so we avoid gif/mp4
+// conversion entirely and capture frames straight to disk as compact JPEGs.)
+const strip=[];
+for(let i=0;i<STRIP;i++){
+  const f=path.join(OUT, `strip_${String(i).padStart(2,'0')}.jpg`);
+  await page.screenshot({ path:f, type:'jpeg', quality:60 });
+  strip.push(f);
+  await page.waitForTimeout(STRIPGAP);
+}
+
 if(VIDEO) await page.waitForTimeout(CLIPSECS*1000);
-await ctx.close(); // finalizes video
+await ctx.close(); // finalizes any recorded webm
 await browser.close();
 server.close();
 
-// convert recorded webm -> mp4 + gif thumbnail via ffmpeg (available in env)
 let clip=null;
-if(VIDEO){
-  const webm = fs.readdirSync(OUT).find(f=>f.endsWith('.webm'));
-  if(webm){
-    const src=path.join(OUT,webm); const mp4=path.join(OUT,'clip.mp4'); const gif=path.join(OUT,'clip.gif');
-    try{ execFileSync(FFMPEG,['-y','-i',src,'-vf','scale=800:-2','-r','20',gif],{stdio:'ignore'});
-         execFileSync(FFMPEG,['-y','-i',src,'-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',mp4],{stdio:'ignore'});
-         clip={mp4,gif}; }catch(e){ clip={webm:src, err:String(e).slice(0,120)}; }
-  }
-}
+if(VIDEO){ const webm=fs.readdirSync(OUT).find(f=>f.endsWith('.webm')); if(webm) clip={ webm:path.join(OUT,webm) }; }
 
-const report={ url, when:new Date().toISOString(), viewport:{W,H}, shots, state, errors, clip };
+const report={ url, when:new Date().toISOString(), viewport:{W,H}, shots, strip, state, errors, clip };
 fs.writeFileSync(path.join(OUT,'capture.json'), JSON.stringify(report,null,2));
-console.log(JSON.stringify({ ok:errors.length===0, out:OUT, shots:shots.length, state, errors:errors.slice(0,5), clip }, null, 2));
+console.log(JSON.stringify({ ok:errors.length===0, out:OUT, shots:shots.length, strip:strip.length, state, errors:errors.slice(0,5), clip }, null, 2));

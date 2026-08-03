@@ -19,6 +19,11 @@ const pieceRow=(pc)=>{
   </div>`;
 };
 const shot=(p,cap)=>{ const d=dataURI(p); return d?`<figure><img src="${d}"><figcaption>${cap||''}</figcaption></figure>`:''; };
+const flipbook=(frames)=>{ const uris=(frames||[]).map(dataURI).filter(Boolean); if(uris.length<2) return '';
+  return `<div class="card"><h2>In motion — live capture (auto-combat)</h2>
+    <figure><img id="flip" src="${uris[0]}"><figcaption>▶ ${uris.length}-frame in-engine loop</figcaption></figure></div>
+    <script>(function(){var F=${JSON.stringify(uris)},i=0,img=document.getElementById('flip');
+      setInterval(function(){i=(i+1)%F.length;img.src=F[i];},130);})();<\/script>`; };
 
 const html=`<title>Dungeon Karl — Build Progress</title>
 <style>
@@ -65,6 +70,8 @@ figcaption{font-size:10.5px;color:#7fa9bd;text-align:center;margin-top:4px;lette
   </div></div>
 
   ${state.latestShots?.length?`<div class="card"><h2>Latest build — captured live</h2><div class="shots">${state.latestShots.map(s=>shot(s.path,s.cap)).join('')}</div></div>`:''}
+
+  ${state.strip?.length?flipbook(state.strip):''}
 
   <div class="card"><h2>Pieces (each judged independently vs the reference)</h2>${state.pieces.map(pieceRow).join('')}</div>
 
