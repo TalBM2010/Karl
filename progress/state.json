@@ -1,19 +1,19 @@
 {
-  "updated": "2026-08-03 09:25 UTC",
+  "updated": "2026-08-03 09:48 UTC",
   "wave": 3,
-  "rounds": 5,
-  "overall": 8.0,
-  "note": "Cohesion pass 2 landed: boss-fight camera now frames the whole Juicer, Princess Donut clearly visible, loot labels clear of the HUD. We cover all four reference frames at ~8/10. Wave 3 attacks the two honest remaining gaps vs Diablo IV: skill abilities that fire spectacular VFX in combat (Frame B's swirling aether), and model fidelity.",
+  "rounds": 6,
+  "overall": 8.3,
+  "note": "Wave 3 landed: Carl now fires spectacular Primal-Warrior abilities in combat — cyan cleave arcs, expanding aether novas, whirlwind, war-cry runes, a persistent aether aura (Frame B's swirling energy), with live action-bar cooldowns. Models sharpened: the Juicer has glowing red veins + separated muscle, Carl has real muscle definition + a structured face, arachnids are gem-like. Overall 8.0 → 8.3.",
   "latestShots": [
-    { "path": "captures/w2_cohesion/shot_04.png", "cap": "Boss-fight camera fixed — the whole Juicer frames head-to-feet over Carl + Donut (Frame A)" },
+    { "path": "captures/w3_main/shot_01.png", "cap": "Cleave arc + aether aura on Carl, veiny Juicer looming (Frame B energy + Frame A boss)" },
+    { "path": "captures/w3_main/shot_05.png", "cap": "Aether Nova shockwave + war-cry rune, glowing-vein Juicer" },
     { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
-    { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" },
-    { "path": "captures/w2_char/shot_00.png", "cap": "Carl in the lit cavern with a loot glow — heart boxers, energy axe" }
+    { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
   ],
   "strip": [
-    "captures/w2_cohesion/strip_00.jpg","captures/w2_cohesion/strip_01.jpg","captures/w2_cohesion/strip_02.jpg","captures/w2_cohesion/strip_03.jpg",
-    "captures/w2_cohesion/strip_04.jpg","captures/w2_cohesion/strip_05.jpg","captures/w2_cohesion/strip_06.jpg","captures/w2_cohesion/strip_07.jpg",
-    "captures/w2_cohesion/strip_08.jpg","captures/w2_cohesion/strip_09.jpg","captures/w2_cohesion/strip_10.jpg","captures/w2_cohesion/strip_11.jpg"
+    "captures/w3_main/strip_00.jpg","captures/w3_main/strip_01.jpg","captures/w3_main/strip_02.jpg","captures/w3_main/strip_03.jpg",
+    "captures/w3_main/strip_04.jpg","captures/w3_main/strip_05.jpg","captures/w3_main/strip_06.jpg","captures/w3_main/strip_07.jpg",
+    "captures/w3_main/strip_08.jpg","captures/w3_main/strip_09.jpg","captures/w3_main/strip_10.jpg","captures/w3_main/strip_11.jpg"
   ],
   "pieces": [
     { "name": "Environment & floor depth", "status": "winning", "score": 8.0, "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields" },
@@ -26,10 +26,11 @@
     { "name": "Loot, drops & System loot boxes (Frame B)", "status": "winning", "score": 7.5, "note": "rarity beams, ground labels, gold piles, System loot boxes that pop open" },
     { "name": "Enemies (crystalline arachnids)", "status": "winning", "score": 7.0, "note": "faceted menacing crystal spiders" },
     { "name": "Hero (Carl) & companion (Donut)", "status": "winning", "score": 7.5, "note": "prominent, heart boxers read, Donut now clearly visible; model fidelity still improvable" },
-    { "name": "Skill / ability VFX (Frame B aether)", "status": "building", "score": 3.0, "gap": "skills on the action bar don't fire visible abilities yet — combat is melee-only vs Frame B's swirling aether effects" },
-    { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "building", "score": 6.5, "gap": "stylized primitives read slightly balloon-like vs AAA sculpts — push proportions/detail/shading" }
+    { "name": "Skill / ability VFX (Frame B aether)", "status": "winning", "score": 8.5, "note": "5 auto-firing abilities + aether aura + live action-bar cooldowns; combat reads powered-up in motion" },
+    { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "winning", "score": 7.5, "gap": "much sharper — Juicer veins, Carl muscle/face, gem spiders; deeper skill-bar readability during cooldown to smooth" }
   ],
   "log": [
+    { "t": "09:48", "tag": "CRITIC r6", "c": "#3a2a12", "msg": "Wave 3 judged vs reference: abilities ~8.5 (Frame-B swirling aether now firing in combat), models ~7.5 (veiny Juicer, defined Carl, gem arachnids). Overall 8.0 → 8.3. Minor: skill-bar dims when many abilities cool at once." },
     { "t": "09:25", "tag": "WAVE 3", "c": "#12303f", "msg": "Launched builders on the two honest remaining gaps: spectacular skill/ability VFX in combat, and a model-fidelity polish on Carl + the Juicer + arachnids." },
     { "t": "09:22", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #2: boss-fight camera frames the full Juicer head-to-feet, Donut always visible beside Carl, loot labels kept off the HUD. Wins intact. 7.7 → 8.0." },
     { "t": "09:05", "tag": "CRITIC r4", "c": "#3a2a12", "msg": "Wave 2 judged vs reference: Juicer boss ~8 (Frame A), character sheet ~8.5 (D), inventory ~8 (C), loot ~7.5 (B). Overall 7.3 → 7.7. We now cover all four reference frames." },
