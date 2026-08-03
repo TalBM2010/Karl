@@ -117,8 +117,16 @@ export function init(api){
       font-family:"Rajdhani","Segoe UI",system-ui,sans-serif; opacity:0; transition:opacity .35s ease;
       font-feature-settings:"tnum"; }
     #karl-lbx.on{ opacity:1; }
-    #karl-lbx .veil{ position:absolute; inset:0; background:radial-gradient(120% 90% at 50% 46%,
-      rgba(4,10,16,.30) 0%, rgba(3,7,12,.72) 55%, rgba(2,5,9,.92) 100%); }
+    /* Full-screen dimming backdrop BEHIND the ceremony content: a flat darken (so the live
+       boss/combat can't fight the reward for attention even dead-center) layered under a radial
+       vignette that focuses the eye on the box/card. Deliberately no backdrop-filter blur — a
+       full-screen blur composited every frame times the capture harness's software GL out; this
+       layered darken gives the same clean "the world dims for the reveal" read cheaply, and it
+       fades in/out with #karl-lbx.on so the game restores smoothly. */
+    #karl-lbx .veil{ position:absolute; inset:0;
+      background:radial-gradient(120% 92% at 50% 46%,
+        rgba(5,11,18,.56) 0%, rgba(3,8,13,.82) 55%, rgba(1,4,8,.95) 100%),
+        rgba(3,8,13,.55); }
     #karl-lbx canvas{ position:absolute; inset:0; width:100%; height:100%; }
     #karl-lbx .flash{ position:absolute; inset:0; background:#fff; opacity:0; mix-blend-mode:screen; }
 
@@ -326,13 +334,28 @@ export function init(api){
     "The System savors the moment…",
   ];
 
+  // Never stack messily on top of a full-screen floor-intro (z40) or the character/inventory
+  // screens (z60): those own the frame and bring their own backdrops, so a loot ceremony firing
+  // underneath them would clash. Gate on their live "showing" classes (owned by the other
+  // modules; we only read them). When busy, open() no-ops and returns false so the auto-demo can
+  // retry the moment the other overlay clears.
+  function overlaysBusy(){
+    const fi = document.getElementById('floor-intro');
+    if(fi && fi.classList.contains('on')) return true;
+    const ks = document.getElementById('ks-root');
+    if(ks && ks.classList.contains('open')) return true;
+    return false;
+  }
+
   function open(tierArg){
-    if(active) return;
+    if(active) return false;
+    if(overlaysBusy()) return false;
     active=true;
     const tier = tierArg ? (tierByKey(tierArg)||pickTier()) : pickTier();
     const rar  = pickRarity(tier.bias);
     const item = genItem(rar);
     runCeremony(tier, rar, item);
+    return true;
   }
 
   function runCeremony(tier, rar, item){
@@ -488,8 +511,14 @@ export function init(api){
   if(isAuto){
     let cyc=0; const order=['Bronze','Silver','Gold','Platinum'];
     setTimeout(function loop(){
-      if(!active) open(order[cyc++ % order.length]);
-      setTimeout(loop, 9000);
+      let wait=9000;
+      if(!active){
+        // Defer (don't skip) while a floor-intro or C/I screen owns the frame, so the ceremony
+        // still fires — and gets captured — the instant that overlay clears, instead of clashing.
+        if(overlaysBusy()) wait=1300;
+        else { open(order[cyc++ % order.length]); }
+      }
+      setTimeout(loop, wait);
     }, 4000);
   }
 }
