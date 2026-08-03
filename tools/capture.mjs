@@ -45,7 +45,8 @@ await page.goto(url, { waitUntil:'load', timeout:30000 });
 try { await page.waitForFunction('window.__READY===true', { timeout:15000 }); }
 catch { console.error('WARN: __READY never set'); }
 await page.waitForTimeout(1500); // let scene settle + combat begin
-if(args.key){ for(const k of String(args.key).split(',')) await page.keyboard.press(k); await page.waitForTimeout(600); }
+if(args.key){ await page.waitForTimeout(1200); // ensure plug-in modules registered their key listeners
+  for(const k of String(args.key).split(',')) await page.keyboard.press(k); await page.waitForTimeout(700); }
 
 const shots=[];
 for(let i=0;i<SHOTS;i++){
