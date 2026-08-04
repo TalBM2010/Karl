@@ -25,7 +25,7 @@ var _t := 0.0
 var _rng := RandomNumberGenerator.new()
 
 # boss state machine
-var _boss_pos := Vector3(0, 0, -11.0)
+var _boss_pos := Vector3(0, 0, -14.0)
 var _boss_face := 0.0
 var _boss_cd := 3.2
 var _boss_phase := "walk"        # walk | telegraph | slam | recover
@@ -63,17 +63,17 @@ func setup(g) -> void:
 # ================================================================= materials
 func _materials() -> void:
 	m_crystal = StandardMaterial3D.new()
-	m_crystal.albedo_color = Color(0.30, 0.20, 0.52)
+	m_crystal.albedo_color = Color(0.17, 0.10, 0.38)
 	m_crystal.metallic = 0.30
 	m_crystal.roughness = 0.14
 	m_crystal.emission_enabled = true
 	m_crystal.emission = Color(0.34, 0.16, 0.78)
-	m_crystal.emission_energy_multiplier = 0.45
+	m_crystal.emission_energy_multiplier = 0.30
 	m_crystal.rim_enabled = true
 	m_crystal.rim = 1.0
 
 	m_crystal_dark = StandardMaterial3D.new()
-	m_crystal_dark.albedo_color = Color(0.13, 0.09, 0.26)
+	m_crystal_dark.albedo_color = Color(0.08, 0.05, 0.18)
 	m_crystal_dark.metallic = 0.45
 	m_crystal_dark.roughness = 0.22
 	m_crystal_dark.rim_enabled = true
@@ -94,12 +94,12 @@ func _materials() -> void:
 	m_eye.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	m_flesh = StandardMaterial3D.new()
-	m_flesh.albedo_color = Color(0.74, 0.31, 0.25)   # flushed, over-pumped
-	m_flesh.roughness = 0.38
-	m_flesh.metallic_specular = 0.6
+	m_flesh.albedo_color = Color(0.60, 0.24, 0.20)   # flushed, over-pumped, NOT plastic
+	m_flesh.roughness = 0.74
+	m_flesh.metallic_specular = 0.22
 	m_flesh.rim_enabled = true
-	m_flesh.rim = 0.85
-	m_flesh.rim_tint = 0.25
+	m_flesh.rim = 0.38
+	m_flesh.rim_tint = 0.4
 
 	m_flesh_dark = StandardMaterial3D.new()
 	m_flesh_dark.albedo_color = Color(0.34, 0.10, 0.09)
@@ -117,13 +117,13 @@ func _materials() -> void:
 	m_gold.roughness = 0.18
 	m_gold.emission_enabled = true
 	m_gold.emission = Color(1.0, 0.72, 0.18)
-	m_gold.emission_energy_multiplier = 1.5
+	m_gold.emission_energy_multiplier = 0.9
 
 	m_fur = StandardMaterial3D.new()
-	m_fur.albedo_color = Color(0.93, 0.80, 0.60)     # cream Persian
-	m_fur.roughness = 0.85
+	m_fur.albedo_color = Color(0.80, 0.66, 0.47)     # cream Persian
+	m_fur.roughness = 0.92
 	m_fur.rim_enabled = true
-	m_fur.rim = 0.9
+	m_fur.rim = 0.45
 
 	m_fur_dark = StandardMaterial3D.new()
 	m_fur_dark.albedo_color = Color(0.60, 0.42, 0.28)
@@ -175,6 +175,48 @@ func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 		st.set_normal(n)
 		st.add_vertex(v)
 
+## A unit crystal spike: faceted, radius 1 in XZ, running from y=0 (butt) to y=1 (point).
+## Scaling/orienting it with a Basis is what lets every limb be defined by two endpoints.
+func _unit_shard(sides: int, jitter: float, rng: RandomNumberGenerator) -> ArrayMesh:
+	var lo: Array[Vector3] = []
+	var mid: Array[Vector3] = []
+	var hi: Array[Vector3] = []
+	for i in sides:
+		var a := TAU * float(i) / float(sides) + rng.randf() * 0.12
+		var rr := 1.0 - jitter * 0.5 + rng.randf() * jitter
+		lo.append(Vector3(cos(a) * rr * 0.55, 0.02, sin(a) * rr * 0.55))
+		mid.append(Vector3(cos(a) * rr, 0.26, sin(a) * rr))
+		hi.append(Vector3(cos(a) * rr * 0.42, 0.74, sin(a) * rr * 0.42))
+	var tip := Vector3(0, 1.0, 0)
+	var butt := Vector3(0, 0.0, 0)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in sides:
+		var j := (i + 1) % sides
+		_tri(st, lo[i], mid[i], mid[j])
+		_tri(st, lo[i], mid[j], lo[j])
+		_tri(st, mid[i], hi[i], hi[j])
+		_tri(st, mid[i], hi[j], mid[j])
+		_tri(st, hi[i], tip, hi[j])
+		_tri(st, lo[j], butt, lo[i])
+	return st.commit()
+
+## Place a unit shard so it runs from `a` to `b` with cross-section radius `rad`.
+func _spike(parent: Node, mesh: ArrayMesh, a: Vector3, b: Vector3, rad: float, mat: Material) -> MeshInstance3D:
+	var d := b - a
+	if d.length() < 0.0001:
+		return null
+	var y := d
+	var ref := Vector3.UP if absf(d.normalized().dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
+	var x := ref.cross(d).normalized() * rad
+	var z := x.normalized().cross(d).normalized() * rad
+	var m := MeshInstance3D.new()
+	m.mesh = mesh
+	m.material_override = mat
+	m.transform = Transform3D(Basis(x, y, z), a)
+	parent.add_child(m)
+	return m
+
 func _mi(parent: Node, mesh: Mesh, mat: Material, pos: Vector3, scl: Vector3 = Vector3.ONE,
 		rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
@@ -222,7 +264,7 @@ func _plate(parent: Node3D, text: String, lvl: int, col: Color, y: float, w: flo
 	var lab := Label3D.new()
 	lab.text = "%s  ⟨%d⟩" % [text, lvl]
 	lab.font_size = 96
-	lab.pixel_size = w * 0.0022
+	lab.pixel_size = w * 0.0016
 	lab.modulate = col
 	lab.outline_size = 26
 	lab.outline_modulate = Color(0, 0, 0, 0.9)
@@ -269,7 +311,7 @@ func _build_donut() -> void:
 		var ab := _aabb_of(fox)
 		var k := 1.0
 		if ab.size.y > 0.001:
-			k = 0.46 / ab.size.y
+			k = 0.56 / ab.size.y
 		fox.scale = Vector3(k, k * 1.02, k)
 		for m in fox.find_children("*", "MeshInstance3D", true, false):
 			(m as MeshInstance3D).material_override = m_fur
@@ -336,13 +378,13 @@ func _build_donut() -> void:
 	_mi(crown, gem, m_core, Vector3(0, 0.055, 0.0), Vector3.ONE * 0.030)
 	var cl := OmniLight3D.new()
 	cl.light_color = Color(1.0, 0.80, 0.35)
-	cl.light_energy = 1.5
-	cl.omni_range = 3.2
+	cl.light_energy = 0.32
+	cl.omni_range = 1.3
 	cl.shadow_enabled = false
 	cl.position = Vector3(0, 0.09, 0)
 	crown.add_child(cl)
 
-	_plate(donut, "Princess Donut", 8, Color(1.0, 0.85, 0.45), 0.86, 0.75)
+	_plate(donut, "Princess Donut", 8, Color(1.0, 0.85, 0.45), 0.82, 0.62)
 	donut.position = Vector3(1.6, 0, 1.2)
 
 func _aabb_of(n: Node) -> AABB:
@@ -363,85 +405,92 @@ func _build_spiders() -> void:
 		var s := _make_spider(i)
 		add_child(s)
 		var a := TAU * float(i) / float(SPIDER_COUNT) + 0.6
-		var rad := 6.0 + _rng.randf() * 3.0
+		var rad := 6.5 + _rng.randf() * 3.0
 		s.position = Vector3(cos(a) * rad, 0, sin(a) * rad)
 		spiders.append({
 			"node": s,
 			"legs": s.get_meta("legs"),
 			"speed": 1.5 + _rng.randf() * 0.6,
 			"phase": _rng.randf() * TAU,
-			"stop": 2.2 + _rng.randf() * 0.9,
+			# each one holds its own arc of the encirclement, so they never pile into one blob
+			"slot": TAU * float(i) / float(SPIDER_COUNT),
+			"stop": 3.1 + _rng.randf() * 1.1,
 		})
 
 func _make_spider(idx: int) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Arachnid%d" % idx
 	var body := Node3D.new()
-	body.position = Vector3(0, 0.78, 0)
+	body.position = Vector3(0, 0.62, 0)
 	root.add_child(body)
 
-	# abdomen: a big rear crystal, tipped up — the menacing part of the silhouette
-	var abd := _shard(7, 0.42, 0.62, 0.34, 0.35, _rng)
-	_mi(body, abd, m_crystal, Vector3(0, 0.10, -0.52), Vector3(1.0, 1.15, 1.25), Vector3(-0.55, 0, 0))
+	var chunk := _unit_shard(7, 0.35, _rng)
+	var limb_shard := _unit_shard(4, 0.20, _rng)
+
+	# abdomen: a big rear crystal reared up over the back — the menacing part of the read
+	_spike(body, chunk, Vector3(0, -0.14, -0.26), Vector3(0, 0.42, -0.90), 0.44, m_crystal)
+	_spike(body, chunk, Vector3(0, -0.06, -0.16), Vector3(0, 0.30, -0.52), 0.26, m_crystal_dark)
 	# cephalothorax
-	var tho := _shard(6, 0.30, 0.30, 0.26, 0.3, _rng)
-	_mi(body, tho, m_crystal, Vector3(0, 0.0, 0.06), Vector3(1.1, 0.9, 1.25))
+	_spike(body, chunk, Vector3(0, -0.16, 0.30), Vector3(0, 0.20, -0.18), 0.36, m_crystal)
+	# head plate + fangs
+	_spike(body, chunk, Vector3(0, -0.02, 0.10), Vector3(0, -0.10, 0.52), 0.19, m_crystal_dark)
+	for s in [-1.0, 1.0]:
+		_spike(body, limb_shard, Vector3(0.07 * s, -0.10, 0.42), Vector3(0.10 * s, -0.42, 0.56), 0.05, m_crystal_dark)
+	# dorsal spines
+	for i in 3:
+		_spike(body, limb_shard, Vector3(0, 0.10 + 0.05 * i, -0.20 - 0.22 * i),
+			Vector3(0, 0.52 + 0.10 * i, -0.32 - 0.26 * i), 0.055, m_crystal_dark)
+
 	# glowing violet core, half sunk into the thorax
 	var core := SphereMesh.new()
 	core.radius = 1.0
 	core.height = 2.0
 	core.radial_segments = 10
 	core.rings = 6
-	_mi(body, core, m_core, Vector3(0, 0.06, -0.10), Vector3.ONE * 0.15)
+	_mi(body, core, m_core, Vector3(0, 0.10, -0.02), Vector3.ONE * 0.13)
 	if idx < 2:
 		var l := OmniLight3D.new()
 		l.light_color = Color(0.62, 0.24, 1.0)
-		l.light_energy = 2.2
-		l.omni_range = 5.0
+		l.light_energy = 2.0
+		l.omni_range = 4.5
 		l.shadow_enabled = false
-		l.position = Vector3(0, 0.10, -0.10)
+		l.position = Vector3(0, 0.16, -0.02)
 		body.add_child(l)
 
-	# head shards + six bright eyes
-	_mi(body, _shard(5, 0.20, 0.20, 0.16, 0.25, _rng), m_crystal_dark, Vector3(0, -0.03, 0.34),
-		Vector3(1.0, 0.8, 1.3))
+	# six bright eyes on the head plate
 	for r in 2:
 		for c in 3:
-			var ex := (float(c) - 1.0) * 0.10
-			_ball(body, Vector3(ex, 0.02 - 0.07 * r, 0.48 - absf(ex) * 0.4),
-				Vector3.ONE * (0.030 if r == 0 else 0.021), m_eye, 6, 4)
-	# fangs
-	for s in [-1.0, 1.0]:
-		_mi(body, _shard(4, 0.05, 0.05, 0.22, 0.0, _rng), m_crystal_dark,
-			Vector3(0.07 * s, -0.14, 0.42), Vector3.ONE, Vector3(0.5, 0, 0))
+			var ex := (float(c) - 1.0) * 0.085
+			_ball(body, Vector3(ex, 0.02 - 0.09 * r, 0.46 - absf(ex) * 0.5),
+				Vector3.ONE * (0.028 if r == 0 else 0.019), m_eye, 6, 4)
 
-	# --- eight legs, each a two-segment crystal armature that arches ABOVE the body
+	# --- eight legs. Each is hip -> knee (out and UP) -> foot (down to a point on the floor),
+	# built from connected endpoints so the armature can never come apart.
 	var legs: Array = []
-	var femur := _shard(4, 0.075, 0.5, 0.10, 0.15, _rng)
-	var tibia := _shard(4, 0.055, 0.5, 0.08, 0.15, _rng)
 	for side in [-1.0, 1.0]:
 		for i in 4:
-			var yaw := (0.85 - 0.52 * float(i)) * side
+			var yaw: float = (1.05 - 0.62 * float(i)) * side
 			var hip := Node3D.new()
-			hip.position = Vector3(0.22 * side, 0.02, 0.22 - 0.15 * float(i))
+			hip.position = Vector3(0.20 * side, -0.02, 0.18 - 0.13 * float(i))
 			hip.rotation = Vector3(0, yaw, 0)
 			body.add_child(hip)
-			var up := Node3D.new()
-			hip.add_child(up)
-			# femur: out and UP
-			var f := _mi(up, femur, m_crystal, Vector3(0.34 * side, 0.30, 0), Vector3(1, 1.25, 1),
-				Vector3(0, 0, -0.95 * side))
-			# knee node so the tibia spears back down to a point on the floor
-			var knee := Node3D.new()
-			knee.position = Vector3(0.66 * side, 0.60, 0)
-			up.add_child(knee)
-			_mi(knee, tibia, m_crystal_dark, Vector3(0.22 * side, -0.42, 0), Vector3(1, 1.45, 1),
-				Vector3(0, 0, 0.42 * side))
-			legs.append({"hip": hip, "up": up, "side": side, "i": i})
+			var swing := Node3D.new()           # animated: the whole leg pivots here
+			hip.add_child(swing)
+			var knee_p := Vector3(0.50 * side, 0.52, 0.08)
+			var foot_p := Vector3(0.88 * side, -0.60, 0.26)
+			_spike(swing, limb_shard, Vector3.ZERO, knee_p, 0.075, m_crystal)
+			_ball(swing, knee_p, Vector3.ONE * 0.038, m_crystal, 8, 5)
+			var lower := Node3D.new()
+			lower.position = knee_p
+			swing.add_child(lower)
+			_spike(lower, limb_shard, Vector3.ZERO, foot_p - knee_p, 0.058, m_crystal_dark)
+			legs.append({"swing": swing, "lower": lower, "side": side, "i": i})
 
 	root.set_meta("legs", legs)
 	root.set_meta("body", body)
-	_plate(root, "Crystal Arachnid", 6, Color(0.80, 0.62, 1.0), 1.75, 0.95)
+	# knee-to-waist on Carl: big enough to threaten, small enough that the hero still reads
+	root.scale = Vector3.ONE * 0.74
+	_plate(root, "Crystal Arachnid", 6, Color(0.80, 0.62, 1.0), 2.05, 0.72)
 	return root
 
 # ================================================================= THE JUICER
@@ -475,6 +524,11 @@ func _build_boss() -> void:
 		_ball(b, Vector3(0.62 * s, 4.55, 0.85), Vector3(0.52, 0.36, 0.34), m_flesh, 10, 6)    # abs
 		_ball(b, Vector3(0.62 * s, 5.15, 0.90), Vector3(0.55, 0.38, 0.36), m_flesh, 10, 6)
 	_ball(b, Vector3(0, 6.55, 0.62), Vector3(0.16, 0.72, 0.30), m_flesh_dark, 8, 5)           # pec cleft
+	for s2 in [-1.0, 1.0]:
+		_ball(b, Vector3(1.05 * s2, 5.80, 0.70), Vector3(1.05, 0.10, 0.36), m_flesh_dark, 8, 5)   # under-pec
+		_ball(b, Vector3(1.75 * s2, 6.30, 0.10), Vector3(0.10, 0.85, 0.62), m_flesh_dark, 8, 5)   # delt/pec split
+		_ball(b, Vector3(0.62 * s2, 4.90, 1.00), Vector3(0.46, 0.07, 0.16), m_flesh_dark, 8, 5)   # ab line
+		_ball(b, Vector3(0.95 * s2, 3.05, 0.62), Vector3(0.14, 0.62, 0.34), m_flesh_dark, 8, 5)   # quad split
 	_ball(b, Vector3(0, 4.85, 0.98), Vector3(0.11, 0.62, 0.22), m_flesh_dark, 8, 5)           # linea alba
 
 	# ---------------- absurd traps, swallowing the neck
@@ -484,10 +538,11 @@ func _build_boss() -> void:
 
 	# ---------------- tiny angry head, sunk between the traps
 	var head := Node3D.new()
-	head.position = Vector3(0, 7.55, 0.28)
-	head.rotation = Vector3(0.22, 0, 0)
+	head.position = Vector3(0, 7.98, 0.95)
+	head.rotation = Vector3(0.30, 0, 0)
 	b.add_child(head)
-	_ball(head, Vector3.ZERO, Vector3(0.46, 0.50, 0.46), m_flesh, 12, 7)
+	_ball(head, Vector3.ZERO, Vector3(0.52, 0.56, 0.52), m_flesh, 12, 7)
+	_limb(head, Vector3(0, -0.42, -0.30), Vector3(0, -0.05, -0.05), 0.34, 0.30, m_flesh, 10)
 	_ball(head, Vector3(0, 0.20, 0.30), Vector3(0.42, 0.11, 0.18), m_flesh_dark, 10, 5)      # scowling brow
 	for s in [-1.0, 1.0]:
 		var e := SphereMesh.new()
@@ -503,7 +558,7 @@ func _build_boss() -> void:
 		em.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_mi(head, e, em, Vector3(0.19 * s, 0.06, 0.40), Vector3.ONE * 0.085)
 	_ball(head, Vector3(0, -0.26, 0.30), Vector3(0.30, 0.16, 0.24), m_flesh_dark, 10, 5)     # roaring jaw
-	_ball(head, Vector3(0, 0.34, -0.10), Vector3(0.44, 0.30, 0.42), m_flesh_dark, 10, 6)     # buzzcut
+	_ball(head, Vector3(0, 0.40, -0.16), Vector3(0.44, 0.22, 0.40), m_flesh_dark, 10, 6)     # buzzcut
 
 	# ---------------- arms: forced out wide, they physically cannot hang down
 	for s in [-1.0, 1.0]:
@@ -519,6 +574,7 @@ func _build_boss() -> void:
 		var wrist := Vector3(1.55 * s, -3.65, 0.55)
 		_limb(arm, Vector3(0.25 * s, -0.35, 0), elbow, 0.86, 0.62, m_flesh, 12)
 		_ball(arm, Vector3(0.80 * s, -1.05, 0.30), Vector3(0.72, 0.85, 0.70), m_flesh, 12, 7)  # bicep
+		_ball(arm, Vector3(0.62 * s, -0.42, 0.28), Vector3(0.70, 0.09, 0.38), m_flesh_dark, 8, 5)  # delt/bicep split
 		_ball(arm, Vector3(0.72 * s, -1.10, -0.42), Vector3(0.55, 0.80, 0.52), m_flesh, 10, 6) # tricep
 		_limb(arm, elbow, wrist, 0.66, 0.42, m_flesh, 10)
 		_ball(arm, elbow.lerp(wrist, 0.30), Vector3(0.60, 0.72, 0.58), m_flesh, 10, 6)
@@ -593,8 +649,8 @@ func _build_jug(parent: Node3D, wrist: Vector3) -> void:
 	for a in [0.0, PI]:
 		var lab := Label3D.new()
 		lab.text = "MUTANT\nWHEY"
-		lab.font_size = 64
-		lab.pixel_size = 0.0055
+		lab.font_size = 52
+		lab.pixel_size = 0.0042
 		lab.modulate = Color(1.0, 0.95, 0.75)
 		lab.outline_size = 18
 		lab.outline_modulate = Color(0.25, 0.0, 0.0, 1.0)
@@ -617,10 +673,10 @@ func _build_syringes(b: Node3D) -> void:
 	for sp in specs:
 		var base: Vector3 = sp[0]
 		var dir: Vector3 = (sp[1] as Vector3).normalized()
-		_limb(b, base, base + dir * 0.95, 0.14, 0.14, m_glass, 8)
-		_limb(b, base + dir * 0.95, base + dir * 1.28, 0.16, 0.16, steel, 8)
-		_limb(b, base + dir * 1.28, base + dir * 1.52, 0.30, 0.30, steel, 8)
-		_limb(b, base - dir * 0.30, base, 0.07, 0.07, steel, 6)
+		_limb(b, base, base + dir * 0.92, 0.105, 0.105, m_glass, 8)
+		_limb(b, base + dir * 0.92, base + dir * 1.16, 0.075, 0.075, steel, 8)
+		_limb(b, base + dir * 1.16, base + dir * 1.24, 0.20, 0.20, steel, 8)
+		_limb(b, base - dir * 0.34, base, 0.045, 0.045, steel, 6)
 
 # ================================================================= AI / animation
 func _process(delta: float) -> void:
@@ -653,31 +709,36 @@ func _tick_donut(delta: float, hero: Vector3) -> void:
 		# the fox head bone rolls around; keep the crown level and just follow the position
 		var gp := head.get_parent() as Node3D
 		if gp:
-			head.global_position = gp.global_position
-			head.global_rotation = Vector3(0, donut.global_rotation.y, 0)
+			head.global_transform = Transform3D(Basis(Vector3.UP, donut.rotation.y), gp.global_position)
 
 func _tick_spiders(delta: float, hero: Vector3) -> void:
 	for s in spiders:
 		var n: Node3D = s["node"]
-		var to := hero - n.position
+		var ring: float = float(s["stop"])
+		var anchor: Vector3 = hero + Vector3(cos(float(s["slot"])), 0, sin(float(s["slot"]))) * ring
+		var to := anchor - n.position
 		to.y = 0
 		var d := to.length()
-		var moving := d > float(s["stop"])
+		var moving := d > 0.5
 		if moving:
 			var dir := to.normalized()
 			# skittering: never a straight line
 			var strafe := Vector3(-dir.z, 0, dir.x) * sin(_t * 2.2 + float(s["phase"])) * 0.45
 			n.position += (dir + strafe).normalized() * float(s["speed"]) * delta
-		n.rotation.y = lerp_angle(n.rotation.y, atan2(to.x, to.z), 0.12)
+		var face := hero - n.position
+		n.rotation.y = lerp_angle(n.rotation.y, atan2(face.x, face.z), 0.12)
 		var body: Node3D = n.get_meta("body")
-		body.position.y = 0.78 + sin(_t * 5.0 + float(s["phase"])) * 0.035
-		var rate: float = 7.0 if moving else 2.2
-		var amp: float = 0.40 if moving else 0.12
+		body.position.y = 0.62 + sin(_t * 5.0 + float(s["phase"])) * 0.04
+		body.rotation.z = sin(_t * 5.0 + float(s["phase"]) + 1.0) * 0.05
+		var rate: float = 8.0 if moving else 2.4
+		var amp: float = 1.0 if moving else 0.30
 		for leg in s["legs"]:
-			var up: Node3D = leg["up"]
-			var ph: float = float(s["phase"]) + float(leg["i"]) * 1.6 + (0.0 if leg["side"] > 0.0 else PI)
-			up.rotation = Vector3(0, 0, sin(_t * rate + ph) * amp * leg["side"] * -1.0)
-			up.position.y = maxf(0.0, sin(_t * rate + ph)) * amp * 0.22
+			var ph: float = float(s["phase"]) + float(leg["i"]) * 1.9 + (0.0 if leg["side"] > 0.0 else PI)
+			var w := sin(_t * rate + ph)
+			var swing: Node3D = leg["swing"]
+			var lower: Node3D = leg["lower"]
+			swing.rotation = Vector3(0, w * 0.26 * amp, maxf(w, 0.0) * 0.30 * amp * -leg["side"])
+			lower.rotation = Vector3(0, 0, maxf(-w, 0.0) * 0.34 * amp * leg["side"])
 
 func _tick_boss(delta: float, hero: Vector3) -> void:
 	if boss == null:
@@ -691,10 +752,12 @@ func _tick_boss(delta: float, hero: Vector3) -> void:
 
 	match _boss_phase:
 		"walk":
-			if d > 5.2:
-				_boss_pos += to.normalized() * 1.15 * delta
+			# he holds at ~9.5 m: any closer and an 8.9 m hulk simply falls out of the
+			# game's fixed iso frame, so the whole silhouette stops reading.
+			if d > 9.5:
+				_boss_pos += to.normalized() * 1.30 * delta
 			_boss_cd -= delta
-			if _boss_cd <= 0.0 and d < 12.0:
+			if _boss_cd <= 0.0 and d < 16.0:
 				_boss_phase = "telegraph"
 				_boss_ph_t = 0.0
 				_boss_ring.visible = true

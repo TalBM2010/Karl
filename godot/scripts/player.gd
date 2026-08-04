@@ -200,15 +200,15 @@ func _crease(bone: String, c: Vector3, rx: float, ry: float, rz: float, unit: fl
 # ---------------------------------------------------------------- materials
 func _materials() -> void:
 	m_skin = StandardMaterial3D.new()
-	m_skin.albedo_color = Color(0.79, 0.50, 0.31)
+	m_skin.albedo_color = Color(0.88, 0.57, 0.36)
 	m_skin.roughness = 0.46
 	m_skin.metallic_specular = 0.55
 	m_skin.rim_enabled = true          # sweaty fresnel — separates each muscle belly
-	m_skin.rim = 0.75
+	m_skin.rim = 0.95
 	m_skin.rim_tint = 0.35
 
 	m_crease = StandardMaterial3D.new()
-	m_crease.albedo_color = Color(0.30, 0.155, 0.095)
+	m_crease.albedo_color = Color(0.26, 0.125, 0.075)
 	m_crease.roughness = 0.72
 
 	m_hair = StandardMaterial3D.new()
