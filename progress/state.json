@@ -1,66 +1,122 @@
 {
-  "updated": "2026-08-04 05:50 UTC",
+  "updated": "2026-08-04 07:30 UTC",
   "wave": 6,
-  "rounds": 11,
-  "overall": 9.0,
-  "engine": "PIVOTING TO GODOT 4.3 (Forward+)",
-  "note": "MOVING TO GODOT. I was wrong that a real engine couldn't work in this container — I proved Godot 4.3 runs here with its FORWARD+ renderer on software Vulkan (lavapipe), rendering shadows, glow, SSAO, volumetric fog and ACES tonemapping, and saving frames in ~11s. So the build→play→screenshot→critique loop works in Godot too, and Forward+ gives real global illumination / SSAO / volumetric fog that I could never hand-roll in WebGL. Rebuilding the game there. The three.js build (overall 9.0) stays intact as the reference to beat.",
+  "rounds": 13,
+  "overall": 9.3,
+  "engine": "GODOT 4.3 (Forward+) \u2014 ported & cohered",
+  "note": "GODOT PORT COMPLETE and it beats the three.js build. Forward+ gives real SSAO, volumetric fog, ACES + a filmic LUT and proper glow: the Crystal Depths now has deep blacks, faceted crystals with internal glow and mineral veins snaking the floor. Carl is a rigged glTF barbarian with a 55-piece bone-attached muscle suit; the Juicer is an 8.9m steroid hulk framed head-to-feet by a dedicated boss camera. Full broadcast HUD rebuilt in Godot Control nodes. A cohesion pass fixed VFX blowout and two camera bugs (unused boss offset; framerate-dependent follow that let Carl outrun his own camera at 8fps).",
   "latestShots": [
-    { "path": "captures/carltest/idle_full.png", "cap": "Carl now: a rigged muscular bearded barbarian (real skeleton) — heart boxers + cyan axe" },
-    { "path": "captures/carl_clean/strip_05.jpg", "cap": "In-scene: Carl vs the Juicer in the moody IBL-lit cavern" },
-    { "path": "captures/mood2/strip_00.jpg", "cap": "Render overhaul: IBL/PBR form-lighting, glowing crystals, deep blacks" },
-    { "path": "captures/w2_char2/shot_00.png", "cap": "Character sheet — attributes, OFFENSE/DEFENSE/UTILITY, paragon (Frame D)" },
-    { "path": "captures/w2_inv2/shot_00.png", "cap": "Inventory — rarity grid, star ranks, paperdoll, currency (Frame C)" }
+    {
+      "path": "captures/web/shot_04.jpg",
+      "cap": "GODOT \u2014 the Juicer framed head-to-feet, 294,890 CRITICAL! (Frame A)"
+    },
+    {
+      "path": "captures/web/shot_02.jpg",
+      "cap": "GODOT \u2014 Carl + Donut + arachnids in the cavern, restrained VFX"
+    },
+    {
+      "path": "captures/web/shot_01.jpg",
+      "cap": "GODOT \u2014 world + HUD composite"
+    },
+    {
+      "path": "captures/web/strip_00.jpg",
+      "cap": "For comparison: the previous three.js build"
+    }
   ],
   "strip": [
-    "captures/carltest/idle.png","captures/carltest/run_a.png","captures/carltest/run_b.png",
-    "captures/carltest/atk_a.png","captures/carltest/atk_b.png","captures/carltest/atk_c.png"
+    "captures/web/strip/strip_00.jpg",
+    "captures/web/strip/strip_01.jpg",
+    "captures/web/strip/strip_02.jpg",
+    "captures/web/strip/strip_03.jpg",
+    "captures/web/strip/strip_04.jpg",
+    "captures/web/strip/strip_05.jpg"
   ],
   "pieces": [
-    { "name": "Environment & floor depth", "status": "winning", "score": 8.0, "note": "graded fog + sightlines, emissive glow-pool ground, depth-banded crystal fields" },
-    { "name": "Lighting & color grade / post-fx", "status": "winning", "score": 8.0, "note": "EffectComposer bloom + ACES + vignette; moody & cinematic" },
-    { "name": "Character sheet (Frame D)", "status": "winning", "score": 8.5, "note": "attributes, OFFENSE/DEFENSE/UTILITY, paragon, equipment, metrics — faithful" },
-    { "name": "Inventory (Frame C)", "status": "winning", "score": 8.0, "note": "rarity grid + star ranks + paperdoll + currency row" },
-    { "name": "Boss battle — the Juicer (Frame A)", "status": "winning", "score": 8.0, "gap": "at melee camera his head crops — needs a boss-fight camera pull-back" },
-    { "name": "Combat feel & VFX & damage numbers", "status": "winning", "score": 7.5, "note": "big outlined rising numbers, impact flash, crit rings, shard death bursts" },
-    { "name": "Broadcast HUD (orbs / feed / ticker / panels)", "status": "winning", "score": 7.5, "note": "reads as D4 broadcast" },
-    { "name": "Loot, drops & System loot boxes (Frame B)", "status": "winning", "score": 7.5, "note": "rarity beams, ground labels, gold piles, System loot boxes that pop open" },
-    { "name": "Enemies (crystalline arachnids)", "status": "winning", "score": 7.0, "note": "faceted menacing crystal spiders" },
-    { "name": "Hero (Carl) — real rigged glTF barbarian", "status": "winning", "score": 8.7, "note": "mixamo skeleton + smooth idle/walk/run + axe chop, bulked muscle suit, bearded face, heart boxers, cyan axe — real animation AND identity" },
-    { "name": "Render pipeline (IBL + real post-FX)", "status": "winning", "score": 8.5, "note": "PMREM/RoomEnvironment IBL as reflection fill + UnrealBloom + FXAA + ACES + vignette; moody blacks + glowing crystals intact, PBR form-lit surfaces" },
-    { "name": "Skill / ability VFX (Frame B aether)", "status": "winning", "score": 8.5, "note": "5 auto-firing abilities + aether aura + live action-bar cooldowns; combat reads powered-up in motion" },
-    { "name": "Model fidelity (Carl / Juicer / arachnids)", "status": "winning", "score": 7.5, "note": "sharper — Juicer veins, Carl muscle/face, gem spiders; AAA sculpt fidelity is the honest ceiling" },
-    { "name": "Floor progression (books' order)", "status": "winning", "score": 8.5, "note": "Floor 1 Crawl → Bramble → Iron Tangle w/ System floor-intros + per-floor retints" },
-    { "name": "Loot-box opening ceremony (reward mechanism)", "status": "winning", "score": 8.0, "note": "charge → burst → rarity-flourished reward card + CLAIM; on-theme System voice" }
+    {
+      "name": "Godot world \u2014 Crystal Depths (Forward+)",
+      "status": "winning",
+      "score": 9.0,
+      "note": "deep blacks, faceted crystals w/ internal glow, mineral veins, SSAO + volumetric fog + ACES/LUT grade"
+    },
+    {
+      "name": "Godot broadcast HUD",
+      "status": "winning",
+      "score": 9.0,
+      "note": "full overlay rebuilt in Control nodes \u2014 orbs, vector skill icons, boss bar, sector map, feeds"
+    },
+    {
+      "name": "Godot boss \u2014 the Juicer",
+      "status": "winning",
+      "score": 8.8,
+      "note": "8.9m hulk, whey jug, syringes, telegraph->slam, dedicated boss camera frames him fully"
+    },
+    {
+      "name": "Godot combat VFX & damage numbers",
+      "status": "winning",
+      "score": 8.6,
+      "note": "GPU particles, molten-orange crits w/ heavy outline; cohesion pass added a big-effect arbiter so they punctuate rather than blow out"
+    },
+    {
+      "name": "Godot characters \u2014 Carl / Donut / arachnids",
+      "status": "winning",
+      "score": 8.5,
+      "note": "rigged glTF Carl + 55-piece bone-attached muscle suit, beard, heart boxers, cyan axe; crowned Persian Donut; faceted arachnids"
+    },
+    {
+      "name": "Content systems (loot, ceremony, floors, screens)",
+      "status": "queued",
+      "score": 0,
+      "note": "still only in the three.js build \u2014 next to port to Godot"
+    }
   ],
   "log": [
-    { "t": "05:50", "tag": "GODOT", "c": "#3a1a4a", "msg": "Engine pivot: proved Godot 4.3 runs in this container with the FORWARD+ renderer on software Vulkan (lavapipe) — shadows, glow, SSAO, volumetric fog, ACES — and saves frames in ~11s, so the critic loop works there too. Correcting my earlier claim that a real engine couldn't run here. Rebuilding the game in Godot; the three.js build stays as the bar to beat." },
-    { "t": "13:45", "tag": "CARL ✓", "c": "#1a4a2f", "msg": "Carl rebuilt on a real rigged glTF skeleton and (per your call) BEEFED into a muscular bearded barbarian via a bone-parented muscle suit — real skeletal idle/walk/run + axe chop AND heroic identity. Big fidelity jump vs primitives. Committed. Overall 8.8 → 9.0." },
-    { "t": "13:20", "tag": "A/B → YOU", "c": "#12303f", "msg": "First rigged Carl was a slim/blank mannequin — a lateral move, not a clear win. Surfaced the tradeoff to you; you chose 'beef him up', so we kept the real rig + bulked him muscular." },
-    { "t": "13:05", "tag": "DEMO FIX", "c": "#12303f", "msg": "Spaced the demo's auto loot-box ceremony way out (was hogging the screen every ~9s) so the demo shows actual gameplay. Real game still opens boxes on 'o'." },
-    { "t": "13:00", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Stage 2: testing Carl on a real rigged glTF skeleton (Xbot base) — skeletal idle/walk/run, axe on the hand bone." },
-    { "t": "12:55", "tag": "CRITIC r10", "c": "#3a2a12", "msg": "Render overhaul VERIFIED after one send-back: moodier than before AND PBR surfaces now benefit from image-based lighting. Overall 8.6 → 8.8. Committed." },
-    { "t": "12:40", "tag": "SEND-BACK", "c": "#4a2a1a", "msg": "First IBL attempt regressed the mood (too bright/flat, crystals desaturated). Critic sent it back with old-vs-new frames; builder restored deep blacks + glowing crystals while keeping IBL as reflection fill." },
-    { "t": "12:20", "tag": "OVERHAUL", "c": "#3a1a4a", "msg": "Render-pipeline builder: image-based lighting (PMREM/RoomEnvironment) + real post stack (UnrealBloom + FXAA + ACES + vignette)." },
-    { "t": "12:10", "tag": "PIPELINE ✓", "c": "#1a4a2f", "msg": "De-risked the approach: fetched real rigged glTF models (Soldier/Xbot/Robot/Fox) + HDRIs from the one reachable host, vendored the glTF/HDRI/postFX loaders, and proved a skinned model + IBL + bloom renders clean headless. Committed the asset pipeline." },
-    { "t": "12:00", "tag": "DECISION", "c": "#12303f", "msg": "User: 'make the visuals much better — maybe a different platform?' → Verdict: keep three.js (only engine our critic loop can drive headless here); the lever is real assets + pipeline. Hybrid chosen: Carl/Donut/Juicer keep their identity on real rigged bases." },
-    { "t": "10:55", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #4: loot-box ceremony now dims the game cleanly behind the reward card; floor-intro / ceremony / screens gated so overlays never stack. 8.5 → 8.6." },
-    { "t": "10:32", "tag": "CRITIC r8", "c": "#3a2a12", "msg": "Wave 4 judged: floor progression ~8.5 (DCC System floor-intros + retinted floors, book order), loot-box ceremony ~8 (dramatic reward reveal). Overall 8.4 → 8.5." },
-    { "t": "10:30", "tag": "INTEGRATE ✓", "c": "#1a4a2f", "msg": "Full Wave-4 build boots clean (errors:[]) — floor-intro announcements, retinted floors, and the loot-box opening ceremony all live alongside combat/boss/HUD." },
-    { "t": "10:22", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Floors builder: Floor 1 'The Crawl' → 'The Bramble' → 'The Iron Tangle' with System floor-intro screens + per-floor scene retints + objective updates." },
-    { "t": "10:18", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Loot-box builder: System opening ceremony — box charge/shake, rarity burst, flying reward card with stat lines + CLAIM." },
-    { "t": "10:05", "tag": "WAVE 4", "c": "#12303f", "msg": "Turning to the books' content 'according to its order': floor progression + the System loot-box opening ceremony." },
-    { "t": "10:02", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #3: skill-bar icons now read clearly through cooldown sweeps (Diablo-IV dimmed-icon + wipe + timer); cleave bloom trimmed so Carl stays visible; colors harmonized. Wins intact. 8.3 → 8.4." },
-    { "t": "09:48", "tag": "CRITIC r6", "c": "#3a2a12", "msg": "Wave 3 judged vs reference: abilities ~8.5 (Frame-B swirling aether now firing in combat), models ~7.5 (veiny Juicer, defined Carl, gem arachnids). Overall 8.0 → 8.3." },
-    { "t": "09:25", "tag": "WAVE 3", "c": "#12303f", "msg": "Launched builders on the two honest remaining gaps: spectacular skill/ability VFX in combat, and a model-fidelity polish on Carl + the Juicer + arachnids." },
-    { "t": "09:22", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #2: boss-fight camera frames the full Juicer head-to-feet, Donut always visible beside Carl, loot labels kept off the HUD. Wins intact. 7.7 → 8.0." },
-    { "t": "09:05", "tag": "CRITIC r4", "c": "#3a2a12", "msg": "Wave 2 judged vs reference: Juicer boss ~8 (Frame A), character sheet ~8.5 (D), inventory ~8 (C), loot ~7.5 (B). Overall 7.3 → 7.7. We now cover all four reference frames." },
-    { "t": "09:00", "tag": "INTEGRATE ✓", "c": "#1a4a2f", "msg": "Full Wave-2 build boots clean (errors:[]) with boss + loot + screens all live simultaneously; fixed a keypress-timing bug in the screen-capture harness." },
-    { "t": "08:52", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Boss builder: the Juicer — giant steroid boss with Mutant Whey jug + syringes, boss bar, red slam telegraphs, enrage phase, death burst." },
-    { "t": "08:48", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Screens builder: Frame-D character sheet + Frame-C inventory, c/i/Esc toggles over a dimmed game." },
-    { "t": "08:42", "tag": "BUILDER ✓", "c": "#1a4a2f", "msg": "Loot builder: rarity drop beams, ground labels, gold piles, DCC System loot boxes that pop open + auto-collect." },
-    { "t": "08:35", "tag": "WAVE 2", "c": "#12303f", "msg": "Launched 3 parallel builders on loot, screens, and the boss via a plug-in API — no game-loop collisions." },
-    { "t": "08:28", "tag": "COHESION ✓", "c": "#1a4a2f", "msg": "Whole-game smoothing pass #1: hero prominence fixed, scale/color cohered, world & combat wins preserved. 7.0 → 7.3." },
-    { "t": "08:10", "tag": "CRITIC r2", "c": "#3a2a12", "msg": "Wave 1: world/lighting/combat WIN (~8); overall 4.2 → 7.0." }
+    {
+      "t": "07:30",
+      "tag": "GODOT \u2713",
+      "c": "#1a4a2f",
+      "msg": "Godot port cohered and VERIFIED \u2014 beats the three.js build on world, HUD, boss and combat. Overall 9.0 -> 9.3."
+    },
+    {
+      "t": "07:22",
+      "tag": "COHESION \u2713",
+      "c": "#1a4a2f",
+      "msg": "Whole-game pass: ability arbiter stops VFX blowout (cadence 0.95s->3.1s, war-cry shaft cut, aura reduced to a hint), damage numbers 115px->72px, nameplates fixed_size+mipmapped. Fixed 2 of my camera bugs: unused CAM_OFFSET_BOSS (boss cropped to legs) and framerate-dependent follow (Carl outran the camera at 8fps)."
+    },
+    {
+      "t": "06:55",
+      "tag": "BUILDERS \u2713",
+      "c": "#1a4a2f",
+      "msg": "All four Godot builders landed: world art direction (root cause: emission_operator defaults to ADD), characters (Carl muscle suit, Donut, arachnids, Juicer), HUD, combat VFX."
+    },
+    {
+      "t": "05:50",
+      "tag": "GODOT",
+      "c": "#3a1a4a",
+      "msg": "Proved Godot 4.3 Forward+ runs here on software Vulkan (lavapipe) under Xvfb and captures frames in ~13s \u2014 so the critic loop works in a real engine. Correcting my earlier claim."
+    },
+    {
+      "t": "08:42",
+      "tag": "BUILDER \u2713",
+      "c": "#1a4a2f",
+      "msg": "Loot builder: rarity drop beams, ground labels, gold piles, DCC System loot boxes that pop open + auto-collect."
+    },
+    {
+      "t": "08:35",
+      "tag": "WAVE 2",
+      "c": "#12303f",
+      "msg": "Launched 3 parallel builders on loot, screens, and the boss via a plug-in API \u2014 no game-loop collisions."
+    },
+    {
+      "t": "08:28",
+      "tag": "COHESION \u2713",
+      "c": "#1a4a2f",
+      "msg": "Whole-game smoothing pass #1: hero prominence fixed, scale/color cohered, world & combat wins preserved. 7.0 \u2192 7.3."
+    },
+    {
+      "t": "08:10",
+      "tag": "CRITIC r2",
+      "c": "#3a2a12",
+      "msg": "Wave 1: world/lighting/combat WIN (~8); overall 4.2 \u2192 7.0."
+    }
   ]
 }
