@@ -228,14 +228,21 @@ func _materials() -> void:
 	m_glint.emission_energy_multiplier = 0.8
 
 	m_cloth = StandardMaterial3D.new()
-	m_cloth.albedo_color = Color(0.90, 0.89, 0.86)
+	# Light off-white, NOT near-white: gives the red hearts real contrast and keeps the cloth
+	# below the ACES clip so the short reads as fabric, not a blown highlight.
+	m_cloth.albedo_color = Color(0.76, 0.72, 0.70)
 	m_cloth.roughness = 0.82
 	var tex := _heart_textures()
 	m_cloth.albedo_texture = tex[0]
 	m_cloth.emission_enabled = true
+	# The emission texture is a white-on-hearts MASK. emission colour carries the red, and
+	# EMISSION_OP_MULTIPLY confines it to the hearts. The default ADD emits `colour + texture`
+	# across the ENTIRE surface — that is what washed the whole short to white and buried the
+	# hearts. MULTIPLY is what makes the mask a mask (same fix as world.gd's floor seams).
 	m_cloth.emission_texture = tex[1]
-	m_cloth.emission = Color(1, 1, 1)
-	m_cloth.emission_energy_multiplier = 0.45
+	m_cloth.emission = Color(0.85, 0.07, 0.10)
+	m_cloth.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
+	m_cloth.emission_energy_multiplier = 0.85
 	m_cloth.uv1_scale = Vector3(4, 2, 1)
 
 	m_metal = StandardMaterial3D.new()
@@ -248,8 +255,11 @@ func _materials() -> void:
 	m_energy.metallic = 0.55
 	m_energy.roughness = 0.16
 	m_energy.emission_enabled = true
-	m_energy.emission = Color(0.02, 0.55, 1.0)
-	m_energy.emission_energy_multiplier = 0.85
+	# Saturated cyan pushed above the glow HDR threshold (0.95) so the blade genuinely blooms.
+	# Red held at zero: bloom can only smear the colour it is given, so with no red it can never
+	# average toward a white blob — it stays cyan no matter how hot the blue/green get.
+	m_energy.emission = Color(0.0, 0.52, 1.0)
+	m_energy.emission_energy_multiplier = 1.5
 	m_energy.rim_enabled = true
 	m_energy.rim = 1.0
 
@@ -259,7 +269,7 @@ func _heart_textures() -> Array:
 	var alb := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var emi := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var white := Color(0.97, 0.96, 0.94)
-	var red := Color(0.40, 0.022, 0.06)
+	var red := Color(0.52, 0.028, 0.055)
 	for y in n:
 		for x in n:
 			# implicit heart curve, centred in the tile
@@ -268,7 +278,8 @@ func _heart_textures() -> Array:
 			var q := px * px + py * py - 1.0
 			var inside := q * q * q - px * px * py * py * py <= 0.0
 			alb.set_pixel(x, y, red if inside else white)
-			emi.set_pixel(x, y, Color(0.75, 0.04, 0.10) if inside else Color(0, 0, 0))
+			# White mask on the hearts, black elsewhere. The material tints it red via MULTIPLY.
+			emi.set_pixel(x, y, Color(1, 1, 1) if inside else Color(0, 0, 0))
 	alb.generate_mipmaps()
 	emi.generate_mipmaps()
 	return [ImageTexture.create_from_image(alb), ImageTexture.create_from_image(emi)]
@@ -558,8 +569,8 @@ func _build_axe() -> void:
 	# The glow sits below the head — inside the blade it would blow the whole thing to white.
 	var glow := OmniLight3D.new()
 	glow.light_color = Color(0.24, 0.68, 1.0)
-	glow.light_energy = 1.4
-	glow.omni_range = 2.6
+	glow.light_energy = 1.8
+	glow.omni_range = 2.9
 	glow.shadow_enabled = false
 	glow.position = Vector3(0, AXE_HEAD_Y - 0.30, 0)
 	axe.add_child(glow)
