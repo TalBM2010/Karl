@@ -38,7 +38,7 @@ const COL_GOLD := Color(1.35, 0.80, 0.28)
 const CLEAVE_COL := Color(0.45, 1.30, 2.00)   # the swing arc is the brightest transient
 
 const TEXT_LIFE := 1.35
-const MAX_TEXT := 6
+const MAX_TEXT := 5
 
 var game: Node = null
 var cam: Camera3D = null
@@ -161,11 +161,11 @@ func _demo_director(dt: float) -> void:
 
 	_next_hit -= dt
 	if _next_hit <= 0.0:
-		_next_hit = 0.50
+		_next_hit = 0.60
 		_hit_i += 1
 		# phantom targets arranged in front of Carl, so numbers spread across the frame
 		var ang: float = f + _rng.randf_range(-1.5, 1.5)
-		var rad: float = _rng.randf_range(1.7, 3.3)
+		var rad: float = _rng.randf_range(1.3, 2.6)
 		var tp := hp + Vector3(sin(ang) * rad, 0.0, cos(ang) * rad)
 
 		match _hit_i % 8:
@@ -218,7 +218,7 @@ func spawn_damage(pos: Vector3, amount: int, type: int) -> void:
 	match type:
 		DmgType.CRIT:
 			col = COL_CRIT
-			ps = 0.00070
+			ps = 0.00062
 			outline = 20
 			sub_text = "CRITICAL!"
 			sub_col = Color(1.45, 0.85, 0.22)
@@ -269,8 +269,8 @@ func spawn_damage(pos: Vector3, amount: int, type: int) -> void:
 	if cam:
 		right = cam.global_transform.basis.x
 	holder.visible = true
-	holder.position = pos + right * ((float(slot) - 1.5) * unit * 1.35 + _rng.randf_range(-0.25, 0.25)) \
-		+ Vector3(0, 2.2 + unit * 0.9 * float(slot % 2) + _rng.randf_range(-0.15, 0.3), 0)
+	holder.position = pos + right * ((float(slot) - 1.5) * unit * 1.15 + _rng.randf_range(-0.2, 0.2)) \
+		+ Vector3(0, 2.1 + unit * 0.75 * float(slot % 2) + _rng.randf_range(-0.15, 0.3), 0)
 	holder.scale = Vector3(0.25, 0.25, 0.25)
 
 	var vx := _rng.randf_range(-0.7, 0.7)

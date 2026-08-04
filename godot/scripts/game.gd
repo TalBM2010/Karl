@@ -62,14 +62,22 @@ func _ready() -> void:
 ## extends Node, and implements `setup(game)`. Missing files are skipped silently, so
 ## builders can own one file each without ever touching this orchestration script.
 func _load_modules() -> void:
+## Each module is isolated: a module that fails to parse, instantiate, or set up is skipped
+## with a warning instead of aborting the loop. Without this, one bad script silently took
+## every later module down with it (that bit us during parallel development).
 	for m in ["hud", "combat", "enemies", "loot", "floors", "screens"]:
 		var path := "res://scripts/modules/%s.gd" % m
 		if not ResourceLoader.exists(path):
 			continue
 		var scr: Script = load(path)
-		if scr == null:
+		if scr == null or not scr.can_instantiate():
+			push_warning("module '%s' failed to load — skipping" % m)
 			continue
-		var node: Node = scr.new()
+		var inst: Variant = scr.new()
+		if not (inst is Node):
+			push_warning("module '%s' is not a Node — skipping" % m)
+			continue
+		var node: Node = inst
 		node.name = m
 		add_child(node)
 		if node.has_method("setup"):
