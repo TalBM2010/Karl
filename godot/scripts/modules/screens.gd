@@ -48,6 +48,7 @@ var inv: Screen
 var chr: Screen
 
 var t := 0.0
+var _occluded := false      # true while a screen is fully open and the HUD/loot are blanked
 
 # fonts
 var f_base: Font
@@ -143,6 +144,49 @@ func _process(delta: float) -> void:
 
 	_upd(inv)
 	_upd(chr)
+	_occlude()
+
+# While a screen is FULLY OPEN, blank the live HUD CanvasLayer and the loot module's world FX
+# (beams / boxes / ground labels / gold / motes) so the menu reads as a clean, near-opaque
+# full-screen page instead of letting broadcast HUD + 3D loot labels bleed through. Everything
+# is restored the instant the panel starts closing. Threshold is symmetric on `anim` so open
+# and close behave identically. Every cross-module reach is guarded with null / `in` / Dictionary
+# checks — a missing or malformed sibling never crashes this module (fault isolation preserved).
+# NOTE: floors.gd's intro owns the 0–5s window and never overlaps this (screens open only t>=5),
+# so the HUD is only ever hidden for the menus, never under the floor-intro broadcast interrupt.
+func _occlude() -> void:
+	# Occlude the moment a panel is even slightly present, not only when fully open: a
+	# partially-faded panel is translucent, so if the bright HUD / loot labels were still
+	# behind it they would bleed through the crossfade (they did — char-sheet mid-fade).
+	# With them hidden from the first frame of the open, a fading panel only ever sits over
+	# the dark 3D world (which reads clean, exactly as it did in the isolated lab). The
+	# threshold is well below the fully-open state and well above resting 0, so the HUD
+	# restores cleanly the instant the panel has all but vanished on close.
+	var fully_open: bool = maxf(inv.anim, chr.anim) > 0.04
+	if fully_open == _occluded:
+		return
+	_occluded = fully_open
+	var vis: bool = not fully_open
+	if game == null or not ("modules" in game):
+		return
+	var mods = game.modules
+	if not (mods is Dictionary):
+		return
+	# HUD — hide its whole CanvasLayer (boss bar, audience feed, orbs, skill bar, sector map)
+	if mods.has("hud"):
+		var h = mods["hud"]
+		if h != null and "layer" in h and h.layer != null:
+			h.layer.visible = vis
+	# LOOT — hide the world-space FX root (3D ground labels, beams, boxes, gold piles, motes)
+	if mods.has("loot"):
+		var l = mods["loot"]
+		if l != null and "root" in l and l.root != null:
+			l.root.visible = vis
+	# COMBAT — hide the world-space VFX root (floating damage / BLOCKED numbers, impact FX)
+	if mods.has("combat"):
+		var cb = mods["combat"]
+		if cb != null and "root" in cb and cb.root != null:
+			cb.root.visible = vis
 
 func _upd(s: Screen) -> void:
 	if s.anim < 0.004 and not s.open:
@@ -269,7 +313,13 @@ class Screen extends Control:
 		if not _seeded:
 			_seed_grid()
 		var a: float = clampf(anim, 0.0, 1.0)
-		if a <= 0.003:
+		# The panel content draws at full alpha/size the moment it draws at all (the pop is a
+		# sub-pixel scale, alpha is fixed), so there is no such thing as a "faintly-open" panel —
+		# it is either absent or fully present. Gate the draw a hair higher than 0 and pair it
+		# with a scrim that is already fully opaque at this same threshold (below): that way crisp
+		# content is NEVER laid over a see-through backdrop, which is what let the world/HUD bleed
+		# through the crossfade regardless of the (capture-timing-sensitive) HUD occlusion toggle.
+		if a <= 0.02:
 			return
 		# ease the reveal (pop) — soft
 		var e: float = a * a * (3.0 - 2.0 * a)
@@ -278,8 +328,29 @@ class Screen extends Control:
 		var sc: float = minf(size.x / DW, size.y / DH)
 		var origin: Vector2 = (size - Vector2(DW, DH) * sc) * 0.5
 
-		# full-screen scrim (drawn in screen space, before transform)
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.026, 0.043, 0.66 * e), true)
+		# full-screen scrim (drawn in screen space, before transform) — near-opaque so no
+		# gameplay / HUD / 3D loot label bleeds through when the menu is open. The module also
+		# hides the HUD CanvasLayer + loot FX root while fully open (_occlude), but the scrim
+		# alone must already read clean during the crossfade. A faint cool centre-lift keeps it
+		# from looking like a flat black slab (subtle vignette for depth).
+		# The scrim opacity RAMPS FAST — decoupled from the panel's soft pop-ease (`e`) — so it
+		# reaches near-opaque by ~a=0.25 and stays there. This is what kills crossfade bleed from
+		# sources the module can't reach (enemy nameplates, the 3D boss/crystals): a mid-fade
+		# panel is translucent, but the full-screen scrim behind it is already opaque, so nothing
+		# from the world layer shows through during the open/close transition, not just when open.
+		# The panel CONTENT (cells, text, hero) draws at full alpha the instant the panel exists,
+		# so the scrim behind it must reach FULL opacity just as fast — otherwise crisp content
+		# floats over a half-opaque backing and the world bleeds through the gaps (that was the
+		# char-sheet mid-fade). Ramp is steep (opaque by a≈0.08) and independent of the soft panel
+		# pop, and alpha is a solid 1.0 — zero transmission from anything behind (HUD, enemy
+		# nameplates, boss, crystals) in any open/close frame, regardless of module ownership.
+		var sa: float = clampf(a * 50.0, 0.0, 1.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.006, 0.020, 0.034, sa), true)
+		# subtle cool centre-lift over the opaque base so it reads with depth, not as a flat slab
+		var cen: Vector2 = size * 0.5
+		for i in range(6, 0, -1):
+			var rad: float = size.x * (0.16 + 0.085 * float(i))
+			draw_circle(cen, rad, Color(0.05, 0.11, 0.16, 0.022 * sa))
 
 		draw_set_transform(origin, 0.0, Vector2(sc, sc))
 

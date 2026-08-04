@@ -1,26 +1,26 @@
 {
-  "updated": "2026-08-04 21:10 UTC",
+  "updated": "2026-08-04 21:35 UTC",
   "wave": 7,
-  "rounds": 13,
-  "overall": 9.3,
-  "engine": "GODOT 4.3 (Forward+) \u2014 porting content systems",
-  "note": "Wave 7: the three three.js-only systems are now ported into Godot \u2014 loot/drops, the System floor-intro, and the inventory+character screens. Loot and floors compose cleanly; the inventory/character overlays are strong in isolation but a composite pass caught them bleeding the HUD through a too-translucent backdrop, now being fixed by a whole-game cohesion agent.",
+  "rounds": 14,
+  "overall": 9.4,
+  "engine": "GODOT 4.3 (Forward+) \u2014 content systems ported & cohered",
+  "note": "Wave 7 done: loot/drops, the System floor-intro, and the inventory+character screens are all ported into Godot and cohered. A composite pass caught the two menus bleeding the live HUD through a translucent backdrop; a fresh whole-game agent root-caused it (a three-way alpha leak) and made them clean opaque full-screen menus with guarded HUD/loot occlusion \u2014 verified everything restores on close. The one honest remaining gap: the inventory pedestal Carl reads as a stiff mannequin, not a heroic muscled statue.",
   "latestShots": [
     {
-      "path": "captures/web/_loot_box.jpg",
-      "cap": "NEW \u2014 loot: 'Gold Loot Box / SYSTEM \u00b7 SEALED' ceremony + a legendary drop + gold pile (rubric 12 / Frame B)"
-    },
-    {
-      "path": "captures/web/_floors_intro.jpg",
-      "cap": "NEW \u2014 the System floor-intro: FLOOR 1 / THE CRAWL, a broadcast interruption over the live HUD"
+      "path": "captures/web/_composite_hero.jpg",
+      "cap": "COHERED \u2014 gameplay + full HUD + loot: 'Bronze Loot Box', 'Crystal Render / Legendary Battleaxe', '7,148 Gold', '12,923 BLOCKED' over deep-black crystals"
     },
     {
       "path": "captures/web/_inventory.jpg",
-      "cap": "NEW \u2014 inventory (Frame C): tabs, lit pedestal, rarity grid, equipped stats, currency"
+      "cap": "FIXED \u2014 inventory now a clean opaque full-screen menu (was bleeding the HUD through); Frame C"
     },
     {
       "path": "captures/web/_charsheet.jpg",
-      "cap": "NEW \u2014 character sheet (Frame D): attribute strip + OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
+      "cap": "character sheet (Frame D): attribute strip + OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
+    },
+    {
+      "path": "captures/web/_floors_intro.jpg",
+      "cap": "the System floor-intro: FLOOR 1 / THE CRAWL, a broadcast interruption over the live HUD"
     }
   ],
   "strip": [
@@ -65,24 +65,30 @@
     {
       "name": "Godot loot & drops (beams, boxes, gold)",
       "status": "winning",
-      "score": 8.0,
+      "score": 8.5,
       "note": "rarity light-shaft drops, crisp fixed-size ground labels, gold piles + beams, the System loot-box hover/burst ceremony \u2014 reads as a Diablo-IV loot moment in the cavern"
     },
     {
       "name": "Godot floor progression + System intro screens",
       "status": "winning",
-      "score": 8.0,
+      "score": 8.5,
       "note": "'THE SYSTEM // DUNGEON BROADCAST' floor-intro overlay in the broadcast language; book order Floor 1 THE CRAWL -> 2 THE BRAMBLE -> 3 THE IRON TANGLE, HUD objectives retitle in sync"
     },
     {
       "name": "Godot inventory + character sheet",
-      "status": "critic",
-      "score": 8.0,
-      "note": "Frames C/D built and strong in isolation \u2014 tabbed inventory, rarity-bordered grid, lit pedestal, full OFFENSE/DEFENSE/UTILITY columns, paragon + play-time",
-      "gap": "composite bleed-through: the translucent screen backdrop lets the live HUD + damage numbers + loot labels show through \u2014 a fresh cohesion agent is making it a clean opaque full-screen menu"
+      "status": "winning",
+      "score": 9.0,
+      "note": "Frames C/D: tabbed inventory, rarity-bordered grid, lit pedestal, full OFFENSE/DEFENSE/UTILITY columns, paragon + play-time \u2014 now a clean opaque full-screen menu (composite bleed fixed)",
+      "gap": "pedestal Carl reads as a stiff grey mannequin rather than a heroic muscled statue \u2014 the one thing holding the best screen below the D4 bar"
     }
   ],
   "log": [
+    {
+      "t": "21:35",
+      "tag": "COHESION \u2713",
+      "c": "#1a4a2f",
+      "msg": "Screen bleed fixed. Root cause: a three-way alpha leak (scrim at 0.66 alpha, its opacity tied to the panel's eased reveal, but panel CONTENT drawn at full alpha the instant it appears) so mid-fade frames put crisp menu content over a see-through backdrop. Fix: fully-opaque scrim that ramps solid by the same threshold content starts drawing, plus a guarded occlude() that hides the HUD/loot/combat layers while a panel is up. Verified across the full composite: inventory + char sheet are now clean opaque menus, the floors intro still composes over the live HUD, and gameplay+loot+HUD all restore correctly on close. Overall 9.3 -> 9.4."
+    },
     {
       "t": "21:10",
       "tag": "COMPOSITE",
