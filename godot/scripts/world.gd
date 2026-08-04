@@ -2,118 +2,255 @@ extends Node3D
 class_name KarlWorld
 ## WORLD & LOOK — the Crystal Depths cavern, built procedurally.
 ##
-## Owns: WorldEnvironment (the Forward+ grade — tonemap/glow/SSAO/SSIL/volumetric fog),
+## Owns: WorldEnvironment (the Forward+ grade — tonemap/glow/SSAO/volumetric fog), the vignette,
 ## lighting, the ground material, and the crystal formations that light the scene.
 ##
-## Target (reference frames A/B): a DARK, moody, high-contrast underground cavern with deep
-## blacks, saturated blue/violet crystal glow, and real atmospheric depth receding into fog.
-## Mood first — the fancy renderer features must serve darkness, not wash it out.
+## ART DIRECTION (reference frames A/B, Diablo IV bar): a DARK, moody, high-contrast underground
+## cavern. Deep blacks everywhere; the ONLY bright things in frame are crystal cores and the pools
+## of coloured light they throw. Cool teal/indigo ambient at a whisper, saturated blue/violet
+## accents, real atmospheric recession into fog.
+##
+## FRAMING NOTE (drives every placement decision): game.gd's camera sits at hero + (7.4, 9.6, 7.4)
+## with a 38° FOV, i.e. ~37° of pitch. The top of frame hits the ground ~29 m from the camera, so
+## nothing past ~32 m from the origin is ever on screen and there is no horizon and no sky. All
+## depth has to be manufactured INSIDE that disc: near shards, mid spires, a far rock wall closing
+## off the top of the frame, and fog separating the three.
 
 const GROUND_SIZE := 240.0
+const WALL_RADIUS := 29.0          # far rock ring — sits just past the top edge of frame
+const MAX_CRYSTAL_LIGHTS := 12      # software Vulkan: pay for a few good lights, not many bad ones
+const HERO_RING := 7.0             # game.gd patrols Carl on this circle — keep it clear
 
 var crystals: Array[Node3D] = []
 var env: Environment
-var fog_color := Color(0.045, 0.10, 0.145)
+var fog_color := Color(0.030, 0.055, 0.078)
+
+var _rng := RandomNumberGenerator.new()
+var _lights_used := 0
+var _crystal_mats := {}
+var _rock_mat: StandardMaterial3D
+var _dark_rock_mat: StandardMaterial3D
 
 func build() -> void:
+	_rng.seed = 20260804
 	_build_environment()
+	_build_vignette()
 	_build_lights()
 	_build_ground()
+	_build_materials()
+	_build_cavern_walls()
+	_build_rocks()
 	_build_crystals()
-	_build_boulders()
+	_build_motes()
 
 # ---------------------------------------------------------------- environment / grade
 func _build_environment() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = fog_color
+	env.background_color = Color(0.006, 0.011, 0.016)
+
+	# Ambient is almost off. In a cave nothing lights you but the crystals — that is the whole
+	# point of the look, and it is what buys back the deep blacks.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.16, 0.30, 0.40)
-	env.ambient_light_energy = 0.35          # low: lights + emissives own the mood
+	env.ambient_light_color = Color(0.09, 0.23, 0.32)
+	env.ambient_light_energy = 0.20
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 0.95
-	env.tonemap_white = 6.0
+	env.tonemap_exposure = 0.92
+	env.tonemap_white = 8.0
 
-	# glow: only genuinely bright things (crystals, VFX) bloom — not the whole frame
+	# Glow: high HDR threshold so only emissive crystal cores and light pools bloom. Small
+	# levels are muted (they just make aliased sparkle); the wide levels carry the halo.
 	env.glow_enabled = true
-	env.glow_intensity = 1.1
-	env.glow_bloom = 0.15
-	env.glow_hdr_threshold = 1.05
+	env.glow_intensity = 0.62
+	env.glow_strength = 0.9
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.30
+	env.glow_hdr_scale = 2.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	# Level weighting is the whole ballgame. The wide levels (4-6) are a 1/16-1/64 res blur; left
+	# at full they take every small emissive detail and smear it into a full-screen colour wash —
+	# which is exactly the "drowning in blue" failure. Tight halo, almost no wide bleed.
+	for i in 7:
+		env.set_glow_level(i, 0.0)
+	env.set_glow_level(1, 0.30)
+	env.set_glow_level(2, 0.85)
+	env.set_glow_level(3, 0.55)
+	env.set_glow_level(4, 0.18)
 
-	# contact shadows / indirect darkening — this is what primitives could never fake
+	# Contact darkening — crevices, the seam where rock meets floor, under the hero.
 	env.ssao_enabled = true
-	env.ssao_radius = 1.2
-	env.ssao_intensity = 2.4
-	env.ssao_power = 1.6
+	env.ssao_radius = 1.1
+	env.ssao_intensity = 3.2
+	env.ssao_power = 2.0
+	env.ssao_detail = 0.6
+	env.ssao_light_affect = 0.15
+	env.ssao_ao_channel_affect = 0.0
 
-	# depth fog: sightlines receding into atmosphere
+	# Depth fog. Low energy + dark colour: it must separate layers, never milk the frame.
 	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 	env.fog_light_color = fog_color
-	env.fog_light_energy = 0.7
-	env.fog_density = 0.018
-	env.fog_sky_affect = 1.0
+	env.fog_light_energy = 0.40
+	env.fog_density = 0.022
+	env.fog_aerial_perspective = 0.0
+	env.fog_sky_affect = 0.0
+	env.fog_height = 6.0
+	env.fog_height_density = 0.030
 
-	# god-ray haze through the crystal light
+	# Volumetric haze — ONLY so the crystal omnis throw visible shafts. Every directional light
+	# has its volumetric contribution zeroed below: a wide directional scattering into this
+	# medium renders as a uniform blue dome over the whole frame that swallows the geometry,
+	# which was the single biggest cause of the "flat blue wash".
 	env.volumetric_fog_enabled = true
-	env.volumetric_fog_density = 0.022
-	env.volumetric_fog_albedo = Color(0.35, 0.62, 0.80)
-	env.volumetric_fog_emission = Color(0.02, 0.06, 0.09)
-	env.volumetric_fog_length = 90.0
+	env.volumetric_fog_density = 0.0
+	env.volumetric_fog_albedo = Color(0.16, 0.34, 0.52)
+	env.volumetric_fog_emission = Color(0.002, 0.005, 0.009)
+	env.volumetric_fog_emission_energy = 1.0
+	env.volumetric_fog_anisotropy = 0.12
+	env.volumetric_fog_length = 40.0
+	env.volumetric_fog_detail_spread = 2.0
+	env.volumetric_fog_gi_inject = 0.0
+	env.volumetric_fog_ambient_inject = 0.0
 
 	env.adjustment_enabled = true
-	env.adjustment_contrast = 1.12
-	env.adjustment_saturation = 1.18
-	env.adjustment_brightness = 0.98
+	env.adjustment_contrast = 1.14
+	env.adjustment_saturation = 1.10
+	env.adjustment_brightness = 1.0
+	env.adjustment_color_correction = _grade_lut()
 
 	var we := WorldEnvironment.new()
+	we.name = "WorldEnv"
 	we.environment = env
 	add_child(we)
 
+## Per-channel 1D LUT used as a filmic curve: crushes the toe to real black with a hair of cool
+## in the shadows, leaves the highlights alone so crystals still punch.
+func _grade_lut() -> GradientTexture1D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.10, 0.30, 0.62, 1.0])
+	g.colors = PackedColorArray([
+		Color(0.000, 0.000, 0.006),
+		Color(0.028, 0.034, 0.052),
+		Color(0.235, 0.250, 0.285),
+		Color(0.640, 0.650, 0.670),
+		Color(1.0, 1.0, 1.0),
+	])
+	var lut := GradientTexture1D.new()
+	lut.gradient = g
+	lut.width = 256
+	return lut
+
+## Cinematic corner falloff. Godot's Environment has no vignette, so this is a full-rect canvas
+## overlay on a negative layer — it sits above the 3D and below any HUD the modules add.
+func _build_vignette() -> void:
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+render_mode blend_mix, unshaded;
+uniform float amount = 0.58;
+uniform float inner = 0.30;
+uniform float outer = 0.86;
+void fragment() {
+	vec2 d = SCREEN_UV - vec2(0.5);
+	d.x *= 1.05;
+	float v = smoothstep(inner, outer, length(d) * 1.42);
+	COLOR = vec4(0.0, 0.004, 0.010, v * amount);
+}
+"""
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	var rect := ColorRect.new()
+	rect.name = "Vignette"
+	rect.material = sm
+	rect.color = Color(1, 1, 1, 1)
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cl := CanvasLayer.new()
+	cl.name = "Grade"
+	cl.layer = -1
+	cl.add_child(rect)
+	add_child(cl)
+
+# ---------------------------------------------------------------- lights
 func _build_lights() -> void:
+	# A dim cool key. Not "the sun" — just enough directional shape so the hero and the rock
+	# relief read, and so we get real shadows for grounding.
 	var key := DirectionalLight3D.new()
-	key.light_color = Color(0.78, 0.88, 1.0)
-	key.light_energy = 1.15
+	key.name = "Key"
+	key.light_color = Color(0.50, 0.70, 1.0)
+	key.light_energy = 0.52
+	key.light_specular = 0.6
 	key.shadow_enabled = true
-	key.directional_shadow_max_distance = 90.0
-	key.rotation_degrees = Vector3(-52, 38, 0)
+	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	key.directional_shadow_max_distance = 46.0   # tight = sharp shadows over the visible disc
+	key.shadow_bias = 0.04
+	key.shadow_normal_bias = 1.2
+	key.light_volumetric_fog_energy = 0.0   # see the volumetric note above — non-negotiable
+	key.rotation_degrees = Vector3(-58, 34, 0)
 	add_child(key)
 
-	var rim := DirectionalLight3D.new()   # warm separation on the hero
-	rim.light_color = Color(1.0, 0.66, 0.42)
-	rim.light_energy = 0.35
+	# Cold bounce from the crystal field, filling the shadow side without lifting blacks.
+	var fill := DirectionalLight3D.new()
+	fill.name = "Fill"
+	fill.light_color = Color(0.28, 0.42, 0.85)
+	fill.light_energy = 0.15
+	fill.shadow_enabled = false
+	fill.light_volumetric_fog_energy = 0.0
+	fill.rotation_degrees = Vector3(-14, -128, 0)
+	add_child(fill)
+
+	# Warm kicker so Carl's silhouette separates from all that blue.
+	var rim := DirectionalLight3D.new()
+	rim.name = "Rim"
+	rim.light_color = Color(1.0, 0.62, 0.34)
+	rim.light_energy = 0.34
 	rim.shadow_enabled = false
-	rim.rotation_degrees = Vector3(-18, -140, 0)
+	rim.light_volumetric_fog_energy = 0.0
+	rim.rotation_degrees = Vector3(-10, 150, 0)
 	add_child(rim)
 
 # ---------------------------------------------------------------- ground
 func _build_ground() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(GROUND_SIZE, GROUND_SIZE)
-	plane.subdivide_width = 32
-	plane.subdivide_depth = 32
+	plane.subdivide_width = 24
+	plane.subdivide_depth = 24
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.115, 0.155, 0.185)
-	mat.roughness = 0.92
-	mat.metallic = 0.05
+	mat.albedo_color = Color(0.150, 0.172, 0.196)   # dark wet stone — bright enough to take a pool of crystal light
+	mat.albedo_texture = _noise_tex(0.014, 4, _ramp([0.0, 1.0], [Color(0.68, 0.72, 0.80), Color(1.0, 1.0, 1.0)]))
 
-	# procedural stone relief (native Godot noise -> real normal map under SSAO/lighting)
-	var n := FastNoiseLite.new()
-	n.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	n.frequency = 0.055
-	n.fractal_octaves = 5
-	var nrm := NoiseTexture2D.new()
-	nrm.noise = n
+	# Relief: broad, soft stone swell. The old version tiled a 5-octave noise 26x — that is what
+	# read as sandpaper/TV static. One low-frequency map at a large tile is enough.
+	var nrm := _noise_tex(0.038, 4, null)
 	nrm.as_normal_map = true
-	nrm.bump_strength = 3.5
-	nrm.width = 512
-	nrm.height = 512
+	nrm.bump_strength = 2.2
 	mat.normal_enabled = true
 	mat.normal_texture = nrm
-	mat.normal_scale = 1.4
-	mat.uv1_scale = Vector3(26, 26, 1)
+	mat.normal_scale = 0.85
+
+	# Second noise drives roughness -> wet patches and dry patches instead of one plastic sheen.
+	mat.roughness = 1.0
+	mat.roughness_texture = _noise_tex(0.032, 3, _ramp([0.0, 1.0], [Color(0.30, 0.30, 0.30), Color(0.95, 0.95, 0.95)]))
+	mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	mat.metallic = 0.16
+	mat.metallic_specular = 0.55
+
+	# Faint mineral seams. Hand-rasterised rather than ramped noise: a colour ramp over a noise
+	# texture is guesswork about the noise's value distribution, and it blew the whole floor out.
+	# This is explicit — thin ridges where the noise crosses zero, patch-masked so most of the
+	# floor stays plain black rock.
+	mat.emission_enabled = true
+	mat.emission = Color(0.14, 0.50, 1.0)
+	mat.emission_energy_multiplier = 1.6
+	mat.emission_texture = _seam_texture()
+	# MULTIPLY, not the default ADD. With ADD, Godot emits `emission + texture`, i.e. the base
+	# colour glows across the ENTIRE surface and the texture only modulates on top — which turns
+	# the whole floor into one uniform blue light source. MULTIPLY is what makes a mask a mask.
+	mat.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
+
+	mat.uv1_scale = Vector3(7, 7, 1)   # ~34 m tile: never repeats inside the visible disc
 
 	var mi := MeshInstance3D.new()
 	mi.mesh = plane
@@ -122,98 +259,412 @@ func _build_ground() -> void:
 	add_child(mi)
 
 	var body := StaticBody3D.new()          # click-to-move raycast target
+	body.name = "GroundBody"
 	var col := CollisionShape3D.new()
-	var shape := WorldBoundaryShape3D.new()
-	col.shape = shape
+	col.shape = WorldBoundaryShape3D.new()
 	body.add_child(col)
 	body.collision_layer = 2
 	add_child(body)
 
-# ---------------------------------------------------------------- crystals
+## Emission mask for gems: columns = facets (each with its own brightness and a soft internal
+## streak), rows = height (molten at the base, near-clear at the tip). Shared by every crystal.
+var _facet_glow: ImageTexture
+func _facet_glow_texture() -> ImageTexture:
+	if _facet_glow:
+		return _facet_glow
+	var cols := 16
+	var rows := 128
+	var img := Image.create(cols, rows, false, Image.FORMAT_RGB8)
+	var r := RandomNumberGenerator.new()
+	r.seed = 4242
+	var facet := []
+	for c in cols:
+		facet.append(r.randf_range(0.40, 1.0))
+	var wobble := []
+	for c in cols:
+		wobble.append(r.randf_range(-0.14, 0.14))
+	for y in rows:
+		var v := float(y) / float(rows - 1)
+		# height falloff: molten base, quick shoulder, faint tip
+		# Gentle falloff plus a hot tip. A steep base-only falloff hides the glow, because the
+		# fixed 37-degree camera mostly sees the UPPER two-thirds of every spire.
+		var fall: float = 0.42 + 0.44 * pow(1.0 - v, 1.1) + 0.30 * pow(v, 7.0)
+		for x in cols:
+			var c: float = clampf(facet[x] * (fall + wobble[x] * v), 0.0, 1.0)
+			img.set_pixel(x, y, Color(c, c, c))
+	_facet_glow = ImageTexture.create_from_image(img)
+	return _facet_glow
+
+## Hairline glowing veins in the rock. Rasterised by hand so the result is exact: `vein` is a
+## thin ridge wherever the noise crosses zero, `mask` keeps whole regions of floor seam-free.
+func _seam_texture() -> ImageTexture:
+	var n := FastNoiseLite.new()
+	n.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	n.frequency = 0.011
+	n.fractal_octaves = 3
+	n.seed = 11
+	var mask := FastNoiseLite.new()
+	mask.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	mask.frequency = 0.004
+	mask.seed = 91
+	var s := 512
+	var img := Image.create(s, s, false, Image.FORMAT_RGB8)
+	for y in s:
+		for x in s:
+			var v: float = n.get_noise_2d(float(x), float(y))
+			var vein: float = pow(1.0 - minf(absf(v) * 13.0, 1.0), 3.0)
+			var m: float = clampf(mask.get_noise_2d(float(x), float(y)) * 2.2 - 0.30, 0.0, 1.0)
+			var c: float = clampf(vein * m, 0.0, 1.0)
+			img.set_pixel(x, y, Color(c, c, c))
+	return ImageTexture.create_from_image(img)
+
+func _noise_tex(freq: float, octaves: int, ramp: Gradient) -> NoiseTexture2D:
+	var n := FastNoiseLite.new()
+	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	n.frequency = freq
+	n.fractal_octaves = octaves
+	n.fractal_gain = 0.42
+	var t := NoiseTexture2D.new()
+	t.noise = n
+	t.width = 512
+	t.height = 512
+	t.seamless = true
+	if ramp:
+		t.color_ramp = ramp
+	return t
+
+func _ramp(offsets: Array, colors: Array) -> Gradient:
+	var g := Gradient.new()
+	var o := PackedFloat32Array()
+	var c := PackedColorArray()
+	for v in offsets:
+		o.append(float(v))
+	for v in colors:
+		c.append(v)
+	g.offsets = o
+	g.colors = c
+	return g
+
+# ---------------------------------------------------------------- shared materials
+func _build_materials() -> void:
+	_rock_mat = StandardMaterial3D.new()
+	_rock_mat.albedo_color = Color(0.140, 0.158, 0.182)
+	_rock_mat.roughness = 0.88
+	_rock_mat.metallic = 0.10
+	_rock_mat.metallic_specular = 0.55
+
+	# The far wall is deliberately near-black: it is a silhouette, not a subject.
+	_dark_rock_mat = StandardMaterial3D.new()
+	_dark_rock_mat.albedo_color = Color(0.062, 0.074, 0.092)
+	_dark_rock_mat.roughness = 0.95
+	_dark_rock_mat.metallic = 0.0
+
+## Faceted gem material. Emission runs through a vertical gradient (mesh UV.v = height fraction)
+## so the crystal is molten at the base and almost clear at the tip — that internal falloff is
+## the difference between "gem" and "flat neon slab".
 func _crystal_material(hue: Color, energy: float) -> StandardMaterial3D:
+	var key := "%s|%.2f" % [hue.to_html(false), energy]
+	if _crystal_mats.has(key):
+		return _crystal_mats[key]
 	var m := StandardMaterial3D.new()
-	m.albedo_color = hue * 0.55
-	m.metallic = 0.15
-	m.roughness = 0.12
+	m.albedo_color = hue * 0.32
+	m.albedo_color.a = 1.0
+	m.metallic = 0.35
+	m.metallic_specular = 0.9
+	m.roughness = 0.10
 	m.emission_enabled = true
 	m.emission = hue
 	m.emission_energy_multiplier = energy
+	m.emission_texture = _facet_glow_texture()
+	m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY   # see the ground note: ADD flattens
 	m.rim_enabled = true
-	m.rim = 0.7
+	m.rim = 0.85
+	m.rim_tint = 0.4
+	_crystal_mats[key] = m
 	return m
 
+# ---------------------------------------------------------------- procedural faceted solids
+## A faceted spire: stacked irregular rings capped by an off-centre apex, FLAT SHADED so every
+## face catches the light differently. This is what makes them read as cut gems rather than
+## extruded prisms. UV.v carries the height fraction for the emission falloff.
+func _facet_mesh(sides: int, height: float, radius: float, jag: float, lean: Vector2, profile: Array) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(0xFFFFFFFF)   # flat shading
+
+	var jitter := []
+	for i in sides:
+		jitter.append(1.0 + _rng.randf_range(-jag, jag))
+
+	var rings := []
+	for p in profile:
+		var yf: float = p[0]
+		var rs: float = p[1]
+		var off := lean * pow(yf, 1.4)
+		var ring := []
+		for i in sides:
+			var a := TAU * float(i) / float(sides)
+			var rr: float = radius * rs * jitter[i]
+			ring.append(Vector3(cos(a) * rr + off.x, yf * height, sin(a) * rr + off.y))
+		rings.append(ring)
+
+	var apex := Vector3(lean.x + _rng.randf_range(-0.12, 0.12) * radius, height,
+		lean.y + _rng.randf_range(-0.12, 0.12) * radius)
+
+	for l in rings.size() - 1:
+		var lo: Array = rings[l]
+		var hi: Array = rings[l + 1]
+		for i in sides:
+			var j := (i + 1) % sides
+			_tri(st, lo[i], hi[i], hi[j], height)
+			_tri(st, lo[i], hi[j], lo[j], height)
+
+	var top: Array = rings[rings.size() - 1]
+	for i in sides:
+		var j := (i + 1) % sides
+		_tri(st, top[i], apex, top[j], height)
+
+	var base: Array = rings[0]
+	var c := Vector3(0, 0, 0)
+	for i in sides:
+		var j := (i + 1) % sides
+		_tri(st, base[i], base[j], c, height)
+
+	st.generate_normals()
+	return st.commit()
+
+## UV.v is the height fraction (drives the internal glow falloff) and UV.u is the angle around
+## the spire's axis, so the emission texture can vary FACET TO FACET. Without that horizontal
+## term every face at a given height emits identically and the gem reads as flat neon paper.
+func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, h: float) -> void:
+	for p in [a, b, c]:
+		var u := atan2(p.z, p.x) / TAU + 0.5
+		st.set_uv(Vector2(u, clamp(p.y / max(h, 0.0001), 0.0, 1.0)))
+		st.add_vertex(p)
+
+const SPIRE_PROFILE := [[0.0, 1.0], [0.14, 1.05], [0.55, 0.78], [0.84, 0.36]]
+const SHARD_PROFILE := [[0.0, 1.0], [0.30, 0.86], [0.70, 0.50], [0.90, 0.22]]
+const BOULDER_PROFILE := [[0.0, 0.86], [0.28, 1.05], [0.62, 0.92], [0.86, 0.55]]
+
+# ---------------------------------------------------------------- cavern shell
+## A ring of near-black rock masses just outside the camera's reach. They fill the top of every
+## frame, so the cavern reads as ENCLOSED instead of an infinite plane, and every glowing crystal
+## in the mid ground gets something dark to silhouette against.
+func _build_cavern_walls() -> void:
+	var count := 26
+	for i in count:
+		var a := TAU * float(i) / float(count) + _rng.randf_range(-0.06, 0.06)
+		var rad := WALL_RADIUS + _rng.randf_range(-1.6, 4.5)
+		var h := _rng.randf_range(9.0, 20.0)
+		var r := _rng.randf_range(3.4, 6.4)
+		var mesh := _facet_mesh(7, h, r, 0.26, Vector2(_rng.randf_range(-1.2, 1.2), _rng.randf_range(-1.2, 1.2)), BOULDER_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _dark_rock_mat
+		mi.position = Vector3(cos(a) * rad, -1.2, sin(a) * rad)
+		mi.rotation.y = _rng.randf() * TAU
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+
+	# A skirt of talus where the wall meets the floor, so the junction is not a clean line.
+	for i in 30:
+		var a := _rng.randf() * TAU
+		var rad := WALL_RADIUS - _rng.randf_range(1.0, 6.0)
+		var s := _rng.randf_range(1.2, 3.4)
+		var mesh := _facet_mesh(6, s * 0.8, s, 0.34, Vector2.ZERO, BOULDER_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _dark_rock_mat
+		mi.position = Vector3(cos(a) * rad, -0.25, sin(a) * rad)
+		mi.rotation = Vector3(_rng.randf_range(-0.2, 0.2), _rng.randf() * TAU, _rng.randf_range(-0.2, 0.2))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+
+# ---------------------------------------------------------------- rocks / stalagmites
+func _build_rocks() -> void:
+	# Mid-ground stalagmites: the layer that actually creates sightlines and depth cues.
+	for i in 30:
+		var p := _scatter(10.0, 26.0)
+		var h := _rng.randf_range(2.2, 6.5)
+		var mesh := _facet_mesh(6, h, _rng.randf_range(0.7, 1.7), 0.30, Vector2(_rng.randf_range(-0.5, 0.5), _rng.randf_range(-0.5, 0.5)), SPIRE_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _rock_mat
+		mi.position = p
+		mi.rotation.y = _rng.randf() * TAU
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		add_child(mi)
+
+	# Near boulders and rubble: foreground weight, contact shadows, scale reference next to Carl.
+	for i in 46:
+		var p := _scatter(3.0, 24.0)
+		var s := _rng.randf_range(0.35, 1.7)
+		var mesh := _facet_mesh(7, s * _rng.randf_range(0.6, 1.1), s, 0.36, Vector2.ZERO, BOULDER_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _rock_mat
+		mi.position = p - Vector3(0, s * 0.22, 0)
+		mi.rotation = Vector3(_rng.randf_range(-0.25, 0.25), _rng.randf() * TAU, _rng.randf_range(-0.25, 0.25))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		add_child(mi)
+
+	# Flat shelves — broken slabs of cavern floor, they break up the plane without adding height.
+	for i in 16:
+		var p := _scatter(5.0, 25.0)
+		var mesh := _facet_mesh(6, 0.5, _rng.randf_range(2.0, 4.2), 0.30, Vector2.ZERO, BOULDER_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _rock_mat
+		mi.position = p - Vector3(0, 0.22, 0)
+		mi.rotation.y = _rng.randf() * TAU
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+
+## Random point in an annulus, biased into frame and keeping the hero's patrol circle clear.
+##
+## FIELD_BIAS is the important half: the camera is welded to hero + (7.4, 9.6, 7.4) and always
+## looks down the -X/-Z diagonal, so the framed wedge sits offset from the origin in that
+## direction. An origin-centred scatter spends half its props behind the camera. This does not.
+const FIELD_BIAS := Vector3(-4.0, 0.0, -4.0)
+
+func _scatter(min_r: float, max_r: float) -> Vector3:
+	for attempt in 16:
+		var a := _rng.randf() * TAU
+		var r := sqrt(_rng.randf()) * (max_r - min_r) + min_r
+		var p := Vector3(cos(a) * r, 0, sin(a) * r) + FIELD_BIAS
+		if absf(p.length() - HERO_RING) > 2.4:
+			return p
+	return Vector3(min_r + 3.0, 0, 0) + FIELD_BIAS
+
+# ---------------------------------------------------------------- crystals
 func _build_crystals() -> void:
-	var hues := [
-		Color(0.22, 0.62, 1.0),    # blue
-		Color(0.55, 0.32, 1.0),    # violet
-		Color(0.90, 0.35, 0.95),   # magenta
+	# Saturated and channel-separated. A hue whose channels are all high just clips to white
+	# under ACES, which is what made the first pass read as neon paper instead of gemstone.
+	var blue := Color(0.10, 0.42, 1.0)
+	var azure := Color(0.06, 0.72, 1.0)
+	var violet := Color(0.42, 0.16, 1.0)
+	var magenta := Color(0.86, 0.14, 0.88)
+
+	# Deliberate layering, not one uniform scatter: hero spires that own the frame, a mid field
+	# that carries the light, near shards for foreground parallax, and a far rim that backlights
+	# the wall. Each layer has its own scale so the eye reads distance.
+	var layers := [
+		# hero spires — the tall landmark formations, all of them lit
+		{"n": 7, "min_r": 9.0, "max_r": 18.0, "h": [7.0, 12.5], "r": [0.55, 1.0], "cnt": [5, 8], "hues": [blue, violet], "light": 22.0, "e": [3.6, 4.8]},
+		# mid field
+		{"n": 24, "min_r": 6.0, "max_r": 21.0, "h": [2.6, 5.6], "r": [0.28, 0.55], "cnt": [4, 7], "hues": [blue, azure, blue, violet], "light": 13.0, "e": [3.1, 4.2]},
+		# near shards — small, dense, foreground
+		{"n": 26, "min_r": 3.0, "max_r": 16.0, "h": [1.1, 2.8], "r": [0.16, 0.34], "cnt": [4, 8], "hues": [azure, blue, blue, azure, magenta], "light": 4.0, "e": [2.6, 3.6]},
+		# far rim — big silhouettes glowing against the cavern wall
+		{"n": 12, "min_r": 22.0, "max_r": 30.0, "h": [5.0, 10.0], "r": [0.42, 0.85], "cnt": [4, 7], "hues": [violet, blue, violet, magenta], "light": 16.0, "e": [3.8, 5.0]},
 	]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260803
-	# three depth bands so the cavern reads with real distance
-	var bands := [
-		{"n": 12, "min_r": 7.0, "max_r": 20.0, "s": 1.0, "light": true},
-		{"n": 14, "min_r": 20.0, "max_r": 45.0, "s": 1.9, "light": true},
-		{"n": 16, "min_r": 45.0, "max_r": 95.0, "s": 3.6, "light": false},
-	]
-	for band in bands:
-		for i in int(band["n"]):
-			var ang := rng.randf() * TAU
-			var rad: float = rng.randf_range(band["min_r"], band["max_r"])
-			var pos := Vector3(cos(ang) * rad, 0, sin(ang) * rad)
-			var hue: Color = hues[rng.randi() % hues.size()]
-			var cluster := _crystal_cluster(rng, hue, float(band["s"]), bool(band["light"]))
+
+	for layer in layers:
+		for i in int(layer["n"]):
+			var pos := _scatter(float(layer["min_r"]), float(layer["max_r"]))
+			var hues: Array = layer["hues"]
+			var hue: Color = hues[_rng.randi() % hues.size()]
+			var cluster := _crystal_cluster(layer, hue)
 			cluster.position = pos
 			add_child(cluster)
 			crystals.append(cluster)
 
-func _crystal_cluster(rng: RandomNumberGenerator, hue: Color, scale_mul: float, with_light: bool) -> Node3D:
+func _crystal_cluster(layer: Dictionary, hue: Color) -> Node3D:
 	var grp := Node3D.new()
-	var count := rng.randi_range(3, 6)
-	var mat := _crystal_material(hue, rng.randf_range(2.2, 4.0))
+	var hr: Array = layer["h"]
+	var rr: Array = layer["r"]
+	var cr: Array = layer["cnt"]
+	var er: Array = layer["e"]
+	var count := _rng.randi_range(int(cr[0]), int(cr[1]))
+	var spread: float = float(rr[1]) * 4.0 + float(hr[1]) * 0.18
+	var mat := _crystal_material(hue, _rng.randf_range(float(er[0]), float(er[1])))
+	var tallest := 0.0
+
 	for i in count:
-		var pm := PrismMesh.new()
-		var h := rng.randf_range(1.8, 4.6) * scale_mul
-		pm.size = Vector3(rng.randf_range(0.35, 0.9) * scale_mul, h, rng.randf_range(0.35, 0.9) * scale_mul)
+		# Shards get progressively smaller away from the cluster core — a real formation has one
+		# dominant blade with satellites, never a row of equals.
+		var falloff: float = 1.0 - 0.62 * (float(i) / float(max(count - 1, 1)))
+		var h: float = _rng.randf_range(float(hr[0]), float(hr[1])) * falloff
+		var rad: float = _rng.randf_range(float(rr[0]), float(rr[1])) * falloff
+		var sides := 5 if _rng.randf() < 0.5 else 6
+		var lean := Vector2(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.35, 0.35)) * h * 0.14
+		var mesh := _facet_mesh(sides, h, rad, 0.16, lean, SHARD_PROFILE)
 		var mi := MeshInstance3D.new()
-		mi.mesh = pm
+		mi.mesh = mesh
 		mi.material_override = mat
-		mi.position = Vector3(rng.randf_range(-1.0, 1.0) * scale_mul, h * 0.5, rng.randf_range(-1.0, 1.0) * scale_mul)
-		mi.rotation_degrees = Vector3(rng.randf_range(-11, 11), rng.randf() * 360.0, rng.randf_range(-11, 11))
+		var off := Vector2(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1)).normalized() * _rng.randf_range(0.0, spread)
+		if i == 0:
+			off = Vector2.ZERO
+		mi.position = Vector3(off.x, -0.15, off.y)
+		# Shards fan outward from the cluster centre like a real crystal bloom.
+		var tilt := 0.0 if i == 0 else _rng.randf_range(0.10, 0.34)
+		var away := atan2(off.x, off.y)
+		mi.rotation = Vector3(cos(away) * tilt, _rng.randf() * TAU, -sin(away) * tilt)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		grp.add_child(mi)
-	if with_light:
+		tallest = max(tallest, h)
+
+	var lenergy: float = float(layer["light"])
+	if lenergy > 0.0 and _lights_used < MAX_CRYSTAL_LIGHTS:
+		_lights_used += 1
 		var l := OmniLight3D.new()
 		l.light_color = hue
-		l.light_energy = 3.2
-		l.omni_range = 14.0 * scale_mul
+		l.light_energy = lenergy
+		# Tight range + steep attenuation = a POOL of colour on the floor, not a blue wash.
+		# Tight range + a steep curve is what makes these read as POOLS with darkness between
+		# them. Wide, soft omnis just re-create the blue wash from a different direction.
+		l.omni_range = clamp(tallest * 2.3, 7.0, 17.0)
+		l.omni_attenuation = 1.7
+		l.light_specular = 1.0
+		l.light_volumetric_fog_energy = 0.30
 		l.shadow_enabled = false
-		l.position = Vector3(0, 1.6 * scale_mul, 0)
+		l.position = Vector3(0, maxf(tallest * 0.38, 0.8), 0)
 		grp.add_child(l)
 	return grp
 
-# ---------------------------------------------------------------- grounding props
-func _build_boulders() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 77
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.10, 0.13, 0.155)
-	mat.roughness = 0.95
-	for i in 44:
-		var ang := rng.randf() * TAU
-		var rad := rng.randf_range(6.0, 70.0)
-		var s := rng.randf_range(0.4, 1.9)
-		var bm := BoxMesh.new()
-		bm.size = Vector3(s * rng.randf_range(0.8, 1.6), s, s * rng.randf_range(0.8, 1.6))
-		var mi := MeshInstance3D.new()
-		mi.mesh = bm
-		mi.material_override = mat
-		mi.position = Vector3(cos(ang) * rad, s * 0.28, sin(ang) * rad)
-		mi.rotation_degrees = Vector3(rng.randf_range(-16, 16), rng.randf() * 360.0, rng.randf_range(-16, 16))
-		add_child(mi)
+# ---------------------------------------------------------------- atmosphere
+## Slow drifting motes. Cheap CPU particles, but they are most of what sells "air" in a still.
+func _build_motes() -> void:
+	var p := CPUParticles3D.new()
+	p.name = "Motes"
+	p.amount = 130
+	p.lifetime = 11.0
+	p.preprocess = 8.0
+	p.randomness = 0.8
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(24, 5.0, 24)
+	p.position = Vector3(0, 4.5, 0)
+	p.direction = Vector3(0.4, 1, 0.2)
+	p.spread = 60.0
+	p.gravity = Vector3(0, 0.02, 0)
+	p.initial_velocity_min = 0.06
+	p.initial_velocity_max = 0.35
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.6
+	p.color = Color(0.55, 0.82, 1.0, 0.55)
+
+	var q := QuadMesh.new()
+	q.size = Vector2(0.045, 0.045)
+	p.mesh = q
+
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = Color(0.60, 0.85, 1.0)
+	m.disable_receive_shadows = true
+	m.shadow_to_opacity = false
+	p.material_override = m
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(p)
 
 ## Retint the whole cavern for a floor change (floors module drives this).
 func set_mood(bg: Color, fog_energy: float = 0.7) -> void:
 	fog_color = bg
-	env.background_color = bg
+	env.background_color = bg.darkened(0.85)
 	env.fog_light_color = bg
-	env.fog_light_energy = fog_energy
+	env.fog_light_energy = fog_energy * 0.65
+	env.ambient_light_color = bg.lightened(0.25)
+	env.volumetric_fog_albedo = bg.lightened(0.45)
