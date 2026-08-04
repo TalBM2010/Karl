@@ -18,7 +18,7 @@ class_name KarlWorld
 
 const GROUND_SIZE := 240.0
 const WALL_RADIUS := 29.0          # far rock ring — sits just past the top edge of frame
-const MAX_CRYSTAL_LIGHTS := 12      # software Vulkan: pay for a few good lights, not many bad ones
+const MAX_CRYSTAL_LIGHTS := 16      # software Vulkan: pay for a few good lights, not many bad ones
 const HERO_RING := 7.0             # game.gd patrols Carl on this circle — keep it clear
 
 var crystals: Array[Node3D] = []
@@ -53,7 +53,7 @@ func _build_environment() -> void:
 	# point of the look, and it is what buys back the deep blacks.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.09, 0.23, 0.32)
-	env.ambient_light_energy = 0.20
+	env.ambient_light_energy = 0.32
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 0.92
@@ -62,10 +62,10 @@ func _build_environment() -> void:
 	# Glow: high HDR threshold so only emissive crystal cores and light pools bloom. Small
 	# levels are muted (they just make aliased sparkle); the wide levels carry the halo.
 	env.glow_enabled = true
-	env.glow_intensity = 0.62
+	env.glow_intensity = 0.95
 	env.glow_strength = 0.9
 	env.glow_bloom = 0.0
-	env.glow_hdr_threshold = 1.30
+	env.glow_hdr_threshold = 0.95
 	env.glow_hdr_scale = 2.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	# Level weighting is the whole ballgame. The wide levels (4-6) are a 1/16-1/64 res blur; left
@@ -77,6 +77,14 @@ func _build_environment() -> void:
 	env.set_glow_level(2, 0.85)
 	env.set_glow_level(3, 0.55)
 	env.set_glow_level(4, 0.18)
+
+	# Wet-stone reflections: the floor picking up crystal glow is most of what makes a D4 cavern
+	# look wet rather than dusty. Kept to few steps — this is a software rasteriser.
+	env.ssr_enabled = true
+	env.ssr_max_steps = 24
+	env.ssr_fade_in = 0.4
+	env.ssr_fade_out = 6.0
+	env.ssr_depth_tolerance = 0.3
 
 	# Contact darkening — crevices, the seam where rock meets floor, under the hero.
 	env.ssao_enabled = true
@@ -114,8 +122,8 @@ func _build_environment() -> void:
 	env.volumetric_fog_ambient_inject = 0.0
 
 	env.adjustment_enabled = true
-	env.adjustment_contrast = 1.14
-	env.adjustment_saturation = 1.10
+	env.adjustment_contrast = 1.10
+	env.adjustment_saturation = 1.06
 	env.adjustment_brightness = 1.0
 	env.adjustment_color_correction = _grade_lut()
 
@@ -131,8 +139,8 @@ func _grade_lut() -> GradientTexture1D:
 	g.offsets = PackedFloat32Array([0.0, 0.10, 0.30, 0.62, 1.0])
 	g.colors = PackedColorArray([
 		Color(0.000, 0.000, 0.006),
-		Color(0.028, 0.034, 0.052),
-		Color(0.235, 0.250, 0.285),
+		Color(0.055, 0.062, 0.084),
+		Color(0.272, 0.288, 0.322),
 		Color(0.640, 0.650, 0.670),
 		Color(1.0, 1.0, 1.0),
 	])
@@ -148,7 +156,7 @@ func _build_vignette() -> void:
 	sh.code = """
 shader_type canvas_item;
 render_mode blend_mix, unshaded;
-uniform float amount = 0.58;
+uniform float amount = 0.50;
 uniform float inner = 0.30;
 uniform float outer = 0.86;
 void fragment() {
@@ -179,11 +187,12 @@ func _build_lights() -> void:
 	var key := DirectionalLight3D.new()
 	key.name = "Key"
 	key.light_color = Color(0.50, 0.70, 1.0)
-	key.light_energy = 0.52
+	key.light_energy = 0.62
 	key.light_specular = 0.6
 	key.shadow_enabled = true
 	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	key.directional_shadow_max_distance = 46.0   # tight = sharp shadows over the visible disc
+	key.directional_shadow_max_distance = 30.0   # tight = sharp shadows over the visible disc
+	key.shadow_blur = 1.6
 	key.shadow_bias = 0.04
 	key.shadow_normal_bias = 1.2
 	key.light_volumetric_fog_energy = 0.0   # see the volumetric note above — non-negotiable
@@ -204,7 +213,7 @@ func _build_lights() -> void:
 	var rim := DirectionalLight3D.new()
 	rim.name = "Rim"
 	rim.light_color = Color(1.0, 0.62, 0.34)
-	rim.light_energy = 0.34
+	rim.light_energy = 0.40
 	rim.shadow_enabled = false
 	rim.light_volumetric_fog_energy = 0.0
 	rim.rotation_degrees = Vector3(-10, 150, 0)
@@ -218,7 +227,7 @@ func _build_ground() -> void:
 	plane.subdivide_depth = 24
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.150, 0.172, 0.196)   # dark wet stone — bright enough to take a pool of crystal light
+	mat.albedo_color = Color(0.230, 0.252, 0.282)   # dark wet stone — bright enough to take a pool of crystal light
 	mat.albedo_texture = _noise_tex(0.014, 4, _ramp([0.0, 1.0], [Color(0.68, 0.72, 0.80), Color(1.0, 1.0, 1.0)]))
 
 	# Relief: broad, soft stone swell. The old version tiled a 5-octave noise 26x — that is what
@@ -232,7 +241,7 @@ func _build_ground() -> void:
 
 	# Second noise drives roughness -> wet patches and dry patches instead of one plastic sheen.
 	mat.roughness = 1.0
-	mat.roughness_texture = _noise_tex(0.032, 3, _ramp([0.0, 1.0], [Color(0.30, 0.30, 0.30), Color(0.95, 0.95, 0.95)]))
+	mat.roughness_texture = _noise_tex(0.032, 3, _ramp([0.0, 1.0], [Color(0.45, 0.45, 0.45), Color(0.92, 0.92, 0.92)]))
 	mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
 	mat.metallic = 0.16
 	mat.metallic_specular = 0.55
@@ -250,7 +259,7 @@ func _build_ground() -> void:
 	# the whole floor into one uniform blue light source. MULTIPLY is what makes a mask a mask.
 	mat.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 
-	mat.uv1_scale = Vector3(7, 7, 1)   # ~34 m tile: never repeats inside the visible disc
+	mat.uv1_scale = Vector3(11, 11, 1)   # ~22 m tile: never repeats inside the visible disc
 
 	var mi := MeshInstance3D.new()
 	mi.mesh = plane
@@ -279,7 +288,7 @@ func _facet_glow_texture() -> ImageTexture:
 	r.seed = 4242
 	var facet := []
 	for c in cols:
-		facet.append(r.randf_range(0.40, 1.0))
+		facet.append(r.randf_range(0.22, 1.0))
 	var wobble := []
 	for c in cols:
 		wobble.append(r.randf_range(-0.14, 0.14))
@@ -348,16 +357,22 @@ func _ramp(offsets: Array, colors: Array) -> Gradient:
 # ---------------------------------------------------------------- shared materials
 func _build_materials() -> void:
 	_rock_mat = StandardMaterial3D.new()
-	_rock_mat.albedo_color = Color(0.140, 0.158, 0.182)
-	_rock_mat.roughness = 0.88
-	_rock_mat.metallic = 0.10
+	_rock_mat.albedo_color = Color(0.380, 0.412, 0.462)
+	_rock_mat.roughness = 0.82
+	_rock_mat.metallic = 0.12
 	_rock_mat.metallic_specular = 0.55
+	_rock_mat.rim_enabled = true          # crystal light wrapping the stone edges
+	_rock_mat.rim = 0.55
+	_rock_mat.rim_tint = 0.25
 
 	# The far wall is deliberately near-black: it is a silhouette, not a subject.
 	_dark_rock_mat = StandardMaterial3D.new()
-	_dark_rock_mat.albedo_color = Color(0.062, 0.074, 0.092)
+	_dark_rock_mat.albedo_color = Color(0.175, 0.192, 0.230)
 	_dark_rock_mat.roughness = 0.95
 	_dark_rock_mat.metallic = 0.0
+	_dark_rock_mat.rim_enabled = true
+	_dark_rock_mat.rim = 0.40
+	_dark_rock_mat.rim_tint = 0.2
 
 ## Faceted gem material. Emission runs through a vertical gradient (mesh UV.v = height fraction)
 ## so the crystal is molten at the base and almost clear at the tip — that internal falloff is
@@ -442,8 +457,8 @@ func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, h: float) -> void
 		st.set_uv(Vector2(u, clamp(p.y / max(h, 0.0001), 0.0, 1.0)))
 		st.add_vertex(p)
 
-const SPIRE_PROFILE := [[0.0, 1.0], [0.14, 1.05], [0.55, 0.78], [0.84, 0.36]]
-const SHARD_PROFILE := [[0.0, 1.0], [0.30, 0.86], [0.70, 0.50], [0.90, 0.22]]
+const SPIRE_PROFILE := [[0.0, 1.0], [0.14, 1.05], [0.62, 0.70], [0.80, 0.50]]
+const SHARD_PROFILE := [[0.0, 0.94], [0.12, 1.0], [0.70, 0.93], [0.82, 0.84]]
 const BOULDER_PROFILE := [[0.0, 0.86], [0.28, 1.05], [0.62, 0.92], [0.86, 0.55]]
 
 # ---------------------------------------------------------------- cavern shell
@@ -540,27 +555,35 @@ func _scatter(min_r: float, max_r: float) -> Vector3:
 func _build_crystals() -> void:
 	# Saturated and channel-separated. A hue whose channels are all high just clips to white
 	# under ACES, which is what made the first pass read as neon paper instead of gemstone.
+	#
+	# The emission energies below are deliberately LOW (peak channel lands near 1.0-2.0). Push
+	# them higher and the strongest channel clips, every facet saturates to the same flat value,
+	# and the internal structure from the facet mask disappears — plastic fins instead of gems.
+	# Brightness comes from the omni pools and from glow catching only the hottest cores.
 	var blue := Color(0.10, 0.42, 1.0)
 	var azure := Color(0.06, 0.72, 1.0)
 	var violet := Color(0.42, 0.16, 1.0)
-	var magenta := Color(0.86, 0.14, 0.88)
+	var magenta := Color(0.62, 0.22, 0.72)
 
 	# Deliberate layering, not one uniform scatter: hero spires that own the frame, a mid field
 	# that carries the light, near shards for foreground parallax, and a far rim that backlights
 	# the wall. Each layer has its own scale so the eye reads distance.
 	var layers := [
 		# hero spires — the tall landmark formations, all of them lit
-		{"n": 7, "min_r": 9.0, "max_r": 18.0, "h": [7.0, 12.5], "r": [0.55, 1.0], "cnt": [5, 8], "hues": [blue, violet], "light": 22.0, "e": [3.6, 4.8]},
+		{"n": 7, "min_r": 9.0, "max_r": 18.0, "h": [7.0, 12.5], "r": [0.55, 1.0], "cnt": [5, 8], "hues": [blue, violet], "light": 30.0, "lights": 5, "e": [2.1, 2.7]},
 		# mid field
-		{"n": 24, "min_r": 6.0, "max_r": 21.0, "h": [2.6, 5.6], "r": [0.28, 0.55], "cnt": [4, 7], "hues": [blue, azure, blue, violet], "light": 13.0, "e": [3.1, 4.2]},
+		{"n": 24, "min_r": 6.0, "max_r": 21.0, "h": [2.6, 5.6], "r": [0.28, 0.55], "cnt": [4, 7], "hues": [azure, blue, azure, blue, violet], "light": 17.0, "lights": 5, "e": [1.9, 2.4]},
 		# near shards — small, dense, foreground
-		{"n": 26, "min_r": 3.0, "max_r": 16.0, "h": [1.1, 2.8], "r": [0.16, 0.34], "cnt": [4, 8], "hues": [azure, blue, blue, azure, magenta], "light": 4.0, "e": [2.6, 3.6]},
+		{"n": 30, "min_r": 3.0, "max_r": 16.0, "h": [1.1, 2.8], "r": [0.16, 0.34], "cnt": [4, 8], "hues": [azure, blue, azure, blue, blue, magenta], "light": 6.5, "lights": 3, "e": [1.6, 2.1]},
 		# far rim — big silhouettes glowing against the cavern wall
-		{"n": 12, "min_r": 22.0, "max_r": 30.0, "h": [5.0, 10.0], "r": [0.42, 0.85], "cnt": [4, 7], "hues": [violet, blue, violet, magenta], "light": 16.0, "e": [3.8, 5.0]},
+		{"n": 9, "min_r": 22.0, "max_r": 30.0, "h": [5.0, 10.0], "r": [0.42, 0.85], "cnt": [4, 7], "hues": [blue, violet, blue, violet, magenta], "light": 22.0, "lights": 4, "e": [2.2, 2.8]},
 	]
 
 	for layer in layers:
+		var budget := int(layer["lights"])
 		for i in int(layer["n"]):
+			# spend each layer's light budget on its first (largest) formations
+			layer["lit"] = budget > 0 and i < budget
 			var pos := _scatter(float(layer["min_r"]), float(layer["max_r"]))
 			var hues: Array = layer["hues"]
 			var hue: Color = hues[_rng.randi() % hues.size()]
@@ -588,7 +611,7 @@ func _crystal_cluster(layer: Dictionary, hue: Color) -> Node3D:
 		var rad: float = _rng.randf_range(float(rr[0]), float(rr[1])) * falloff
 		var sides := 5 if _rng.randf() < 0.5 else 6
 		var lean := Vector2(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.35, 0.35)) * h * 0.14
-		var mesh := _facet_mesh(sides, h, rad, 0.16, lean, SHARD_PROFILE)
+		var mesh := _facet_mesh(sides, h, rad, 0.22, lean, SHARD_PROFILE)
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
 		mi.material_override = mat
@@ -604,8 +627,23 @@ func _crystal_cluster(layer: Dictionary, hue: Color) -> Node3D:
 		grp.add_child(mi)
 		tallest = max(tallest, h)
 
+	# Rock mound at the base — real crystal formations erupt from broken stone, and the mound
+	# gives the cluster a silhouette and a contact shadow instead of a clean floor intersection.
+	if spread > 0.9:
+		for i in 3:
+			var mr: float = spread * _rng.randf_range(0.35, 0.75)
+			var chunk := _facet_mesh(6, mr * _rng.randf_range(0.5, 0.9), mr, 0.38, Vector2.ZERO, BOULDER_PROFILE)
+			var cmi := MeshInstance3D.new()
+			cmi.mesh = chunk
+			cmi.material_override = _rock_mat
+			var ca := TAU * (float(i) + _rng.randf()) / 3.0
+			cmi.position = Vector3(cos(ca) * spread * 0.5, -mr * 0.35, sin(ca) * spread * 0.5)
+			cmi.rotation = Vector3(_rng.randf_range(-0.3, 0.3), _rng.randf() * TAU, _rng.randf_range(-0.3, 0.3))
+			cmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			grp.add_child(cmi)
+
 	var lenergy: float = float(layer["light"])
-	if lenergy > 0.0 and _lights_used < MAX_CRYSTAL_LIGHTS:
+	if lenergy > 0.0 and bool(layer.get("lit", false)) and _lights_used < MAX_CRYSTAL_LIGHTS:
 		_lights_used += 1
 		var l := OmniLight3D.new()
 		l.light_color = hue

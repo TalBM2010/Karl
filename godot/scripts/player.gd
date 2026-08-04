@@ -20,8 +20,9 @@ class_name KarlPlayer
 
 const TARGET_HEIGHT := 2.4
 const BROADEN := Vector3(1.10, 1.0, 1.06)   # heavyweight: wider than the stock mannequin
-const CHOP_TIME := 0.62
-const WINDUP := 0.30                        # fraction of the chop spent winding up
+const CHOP_TIME := 0.86
+const WINDUP := 0.24                        # fraction of the chop spent winding up
+const RECOVER := 0.34                       # trailing fraction spent easing back to carry
 
 var anim: AnimationPlayer
 var skel: Skeleton3D
@@ -140,11 +141,6 @@ func _measure() -> void:
 		var eye_mid := (_gr(el).origin + _gr(er).origin) * 0.5
 		if (eye_mid - _pt("Head")).dot(_fwd) < 0.0:
 			_fwd = -_fwd
-	print("MEASURE u=%.4f headH=%.4f hips->neck=%.4f thigh=%.4f hipw=%.4f up=%s right=%s fwd=%s" % [
-		_u, (_pt("HeadTop_End") - _pt("Head")).length(), (_pt("Neck") - _pt("Hips")).length(),
-		(_pt("LeftLeg") - _pt("LeftUpLeg")).length(), (_pt("RightUpLeg") - _pt("LeftUpLeg")).length(),
-		_up, _right, _fwd])
-	print("MEASURE aabb=%s scale=%s skelxf=%s" % [_model_aabb(model).size, model.scale, skel.transform])
 
 func _attach(bone: String) -> BoneAttachment3D:
 	var idx := _bi(bone)
@@ -239,7 +235,7 @@ func _materials() -> void:
 	m_cloth.emission_enabled = true
 	m_cloth.emission_texture = tex[1]
 	m_cloth.emission = Color(1, 1, 1)
-	m_cloth.emission_energy_multiplier = 1.1
+	m_cloth.emission_energy_multiplier = 0.45
 	m_cloth.uv1_scale = Vector3(4, 2, 1)
 
 	m_metal = StandardMaterial3D.new()
@@ -263,7 +259,7 @@ func _heart_textures() -> Array:
 	var alb := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var emi := Image.create(n, n, true, Image.FORMAT_RGBA8)
 	var white := Color(0.97, 0.96, 0.94)
-	var red := Color(0.62, 0.035, 0.10)
+	var red := Color(0.40, 0.022, 0.06)
 	for y in n:
 		for x in n:
 			# implicit heart curve, centred in the tile
@@ -272,7 +268,7 @@ func _heart_textures() -> Array:
 			var q := px * px + py * py - 1.0
 			var inside := q * q * q - px * px * py * py * py <= 0.0
 			alb.set_pixel(x, y, red if inside else white)
-			emi.set_pixel(x, y, Color(0.85, 0.03, 0.09) if inside else Color(0, 0, 0))
+			emi.set_pixel(x, y, Color(0.75, 0.04, 0.10) if inside else Color(0, 0, 0))
 	alb.generate_mipmaps()
 	emi.generate_mipmaps()
 	return [ImageTexture.create_from_image(alb), ImageTexture.create_from_image(emi)]
@@ -459,7 +455,7 @@ func _boxers() -> void:
 		var leg := CylinderMesh.new()
 		leg.top_radius = hipw * 0.58
 		leg.bottom_radius = hipw * 0.54
-		leg.height = thigh * 0.40
+		leg.height = thigh * 0.50
 		leg.radial_segments = 16
 		leg.cap_top = false
 		leg.cap_bottom = false
@@ -469,7 +465,7 @@ func _boxers() -> void:
 		var ref := _right if absf(d.dot(_right)) < 0.88 else _fwd
 		var zd := d.cross(ref).normalized()
 		var xd := zd.cross(d).normalized()
-		_place(side + "UpLeg", lm, Basis(xd, d, zd), a.lerp(b, 0.26))
+		_place(side + "UpLeg", lm, Basis(xd, d, zd), a.lerp(b, 0.30))
 
 		# hem ring at the leg opening
 		var hem := TorusMesh.new()
@@ -480,7 +476,7 @@ func _boxers() -> void:
 		var hi := MeshInstance3D.new()
 		hi.mesh = hem
 		hi.material_override = bm
-		_place(side + "UpLeg", hi, Basis(xd, d, zd), a.lerp(b, 0.26) + d * (thigh * 0.20))
+		_place(side + "UpLeg", hi, Basis(xd, d, zd), a.lerp(b, 0.30) + d * (thigh * 0.25))
 
 # ---------------------------------------------------------------- the energy axe
 ## The axe is NOT parented to the hand bone. A Mixamo hand tumbles through a run cycle and the
@@ -661,12 +657,18 @@ func _process(delta: float) -> void:
 		swing = -2.35 * sm
 		lean = 0.20 * k
 		arc = -0.85 * sm
-	else:
-		var k := (t - WINDUP) / (1.0 - WINDUP)
+	elif t < 1.0 - RECOVER:
+		var k := (t - WINDUP) / (1.0 - RECOVER - WINDUP)
 		var e := 1.0 - pow(1.0 - k, 3.0)          # fast strike, easing into follow-through
 		swing = lerpf(-2.35, 1.05, e)
 		lean = lerpf(0.20, -0.26, e)
 		arc = lerpf(-0.85, 1.95, e)
+	else:
+		var k := (t - (1.0 - RECOVER)) / RECOVER
+		var e := k * k * (3.0 - 2.0 * k)
+		swing = lerpf(1.05, 0.0, e)
+		lean = lerpf(-0.26, 0.0, e)
+		arc = lerpf(1.95, 0.0, e)
 	_bend("RightArm", Vector3.RIGHT, swing)
 	_bend("RightForeArm", Vector3.RIGHT, swing * 0.35)
 	_bend("RightShoulder", Vector3.RIGHT, swing * 0.20)
