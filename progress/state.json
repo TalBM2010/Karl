@@ -1,9 +1,10 @@
 {
-  "updated": "2026-08-03 13:45 UTC",
-  "wave": 5,
+  "updated": "2026-08-04 05:50 UTC",
+  "wave": 6,
   "rounds": 11,
   "overall": 9.0,
-  "note": "VISUAL OVERHAUL landed. Render pipeline rebuilt on three.js: real image-based lighting (PMREM) + real post-FX (UnrealBloom + FXAA + ACES + vignette), moody blacks + glowing crystals intact. AND Carl is now a REAL RIGGED glTF barbarian: a mixamo skeleton (smooth idle/walk/run + axe chop) bulked with a bone-parented muscle suit into a broad, bearded, heroic build — heart boxers + cyan axe legible. Real animation AND character identity. Big fidelity jump over the old primitives.",
+  "engine": "PIVOTING TO GODOT 4.3 (Forward+)",
+  "note": "MOVING TO GODOT. I was wrong that a real engine couldn't work in this container — I proved Godot 4.3 runs here with its FORWARD+ renderer on software Vulkan (lavapipe), rendering shadows, glow, SSAO, volumetric fog and ACES tonemapping, and saving frames in ~11s. So the build→play→screenshot→critique loop works in Godot too, and Forward+ gives real global illumination / SSAO / volumetric fog that I could never hand-roll in WebGL. Rebuilding the game there. The three.js build (overall 9.0) stays intact as the reference to beat.",
   "latestShots": [
     { "path": "captures/carltest/idle_full.png", "cap": "Carl now: a rigged muscular bearded barbarian (real skeleton) — heart boxers + cyan axe" },
     { "path": "captures/carl_clean/strip_05.jpg", "cap": "In-scene: Carl vs the Juicer in the moody IBL-lit cavern" },
@@ -33,6 +34,7 @@
     { "name": "Loot-box opening ceremony (reward mechanism)", "status": "winning", "score": 8.0, "note": "charge → burst → rarity-flourished reward card + CLAIM; on-theme System voice" }
   ],
   "log": [
+    { "t": "05:50", "tag": "GODOT", "c": "#3a1a4a", "msg": "Engine pivot: proved Godot 4.3 runs in this container with the FORWARD+ renderer on software Vulkan (lavapipe) — shadows, glow, SSAO, volumetric fog, ACES — and saves frames in ~11s, so the critic loop works there too. Correcting my earlier claim that a real engine couldn't run here. Rebuilding the game in Godot; the three.js build stays as the bar to beat." },
     { "t": "13:45", "tag": "CARL ✓", "c": "#1a4a2f", "msg": "Carl rebuilt on a real rigged glTF skeleton and (per your call) BEEFED into a muscular bearded barbarian via a bone-parented muscle suit — real skeletal idle/walk/run + axe chop AND heroic identity. Big fidelity jump vs primitives. Committed. Overall 8.8 → 9.0." },
     { "t": "13:20", "tag": "A/B → YOU", "c": "#12303f", "msg": "First rigged Carl was a slim/blank mannequin — a lateral move, not a clear win. Surfaced the tradeoff to you; you chose 'beef him up', so we kept the real rig + bulked him muscular." },
     { "t": "13:05", "tag": "DEMO FIX", "c": "#12303f", "msg": "Spaced the demo's auto loot-box ceremony way out (was hogging the screen every ~9s) so the demo shows actual gameplay. Real game still opens boxes on 'o'." },

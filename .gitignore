@@ -4,3 +4,5 @@ captures/
 .DS_Store
 # keep vendored addons + assets committed (runtime has no egress); ignore scratch
 test/
+godot/.godot/
+godot/*.import
