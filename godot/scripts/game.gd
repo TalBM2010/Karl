@@ -7,8 +7,10 @@ extends Node3D
 ##
 ## Modules plug in by being added here; each exposes `build()` and optional `_process`.
 
-const CAM_OFFSET := Vector3(11.5, 15.5, 11.5)   # fixed pitched iso — the D4 signature
-const CAM_OFFSET_BOSS := Vector3(18.6, 25.1, 18.6)
+# Fixed pitched iso — the D4 signature. ~43° pitch; pulled close enough that Carl reads
+# as a prominent hero (~1/6 of frame height) sitting in the lower-middle third.
+const CAM_OFFSET := Vector3(7.4, 9.6, 7.4)
+const CAM_OFFSET_BOSS := Vector3(12.0, 15.5, 12.0)   # whole-boss framing for the Juicer
 const CaptureAgent := preload("res://scripts/capture.gd")
 
 var world: KarlWorld
@@ -22,6 +24,12 @@ var _cam_pos := Vector3.ZERO
 var _demo_t := 0.0
 var _attack_cd := 0.0
 var is_capture := false
+var modules := {}
+
+## Emitted so feature modules can react without touching this script.
+signal hero_attacked(target_pos: Vector3, damage: int, crit: bool)
+signal enemy_killed(pos: Vector3)
+signal floor_changed(index: int)
 
 func _ready() -> void:
 	is_capture = OS.get_cmdline_user_args().size() > 0
@@ -42,11 +50,31 @@ func _ready() -> void:
 	add_child(cam)
 	_cam_pos = _cam_target + CAM_OFFSET
 	cam.position = _cam_pos
-	cam.look_at(_cam_target + Vector3(0, 2.5, 0))
+	cam.look_at(_cam_target + Vector3(0, 1.6, 0))
+
+	_load_modules()
 
 	var cap: Node = CaptureAgent.new()
 	cap.name = "Capture"
 	add_child(cap)
+
+## Optional feature modules plug in here — each is res://scripts/modules/<name>.gd,
+## extends Node, and implements `setup(game)`. Missing files are skipped silently, so
+## builders can own one file each without ever touching this orchestration script.
+func _load_modules() -> void:
+	for m in ["hud", "combat", "enemies", "loot", "floors", "screens"]:
+		var path := "res://scripts/modules/%s.gd" % m
+		if not ResourceLoader.exists(path):
+			continue
+		var scr: Script = load(path)
+		if scr == null:
+			continue
+		var node: Node = scr.new()
+		node.name = m
+		add_child(node)
+		if node.has_method("setup"):
+			node.call("setup", self)
+		modules[m] = node
 
 func _process(delta: float) -> void:
 	_demo_director(delta)
@@ -76,4 +104,4 @@ func _update_camera(delta: float) -> void:
 	_cam_target = _cam_target.lerp(hero_pos, 0.08)
 	_cam_pos = _cam_pos.lerp(_cam_target + CAM_OFFSET, 0.10)
 	cam.position = _cam_pos
-	cam.look_at(_cam_target + Vector3(0, 2.5, 0))
+	cam.look_at(_cam_target + Vector3(0, 1.6, 0))
