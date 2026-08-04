@@ -1,10 +1,10 @@
 {
-  "updated": "2026-08-04 21:35 UTC",
+  "updated": "2026-08-04 22:05 UTC",
   "wave": 7,
   "rounds": 14,
   "overall": 9.4,
   "engine": "GODOT 4.3 (Forward+) \u2014 content systems ported & cohered",
-  "note": "Wave 7 done: loot/drops, the System floor-intro, and the inventory+character screens are all ported into Godot and cohered. A composite pass caught the two menus bleeding the live HUD through a translucent backdrop; a fresh whole-game agent root-caused it (a three-way alpha leak) and made them clean opaque full-screen menus with guarded HUD/loot occlusion \u2014 verified everything restores on close. The one honest remaining gap: the inventory pedestal Carl reads as a stiff mannequin, not a heroic muscled statue.",
+  "note": "Wave 7 + pedestal round: content systems ported & cohered; the inventory pedestal hero is now the REAL rigged 3D Carl (muscle suit, beard, cyan axe) rendered live in a SubViewport, replacing the grey mannequin. Honest remaining gap on the hero: the heart-print boxers blow out to near-white and the axe glow is modest under software Vulkan \u2014 both are player.gd MATERIAL issues (they'd lift the in-game Carl too), which is the next piece.",
   "latestShots": [
     {
       "path": "captures/web/_composite_hero.jpg",
@@ -12,7 +12,7 @@
     },
     {
       "path": "captures/web/_inventory.jpg",
-      "cap": "FIXED \u2014 inventory now a clean opaque full-screen menu (was bleeding the HUD through); Frame C"
+      "cap": "UPGRADED \u2014 inventory pedestal is now the real rigged 3D Carl (muscled, bearded, cyan axe) not a mannequin; honest gap: heart-boxers wash out to white"
     },
     {
       "path": "captures/web/_charsheet.jpg",
@@ -78,11 +78,17 @@
       "name": "Godot inventory + character sheet",
       "status": "winning",
       "score": 9.0,
-      "note": "Frames C/D: tabbed inventory, rarity-bordered grid, lit pedestal, full OFFENSE/DEFENSE/UTILITY columns, paragon + play-time \u2014 now a clean opaque full-screen menu (composite bleed fixed)",
-      "gap": "pedestal Carl reads as a stiff grey mannequin rather than a heroic muscled statue \u2014 the one thing holding the best screen below the D4 bar"
+      "note": "Frames C/D: clean opaque menus; the pedestal hero is now the real rigged 3D Carl in a live SubViewport (was a grey mannequin)",
+      "gap": "the heart-print boxers blow out to near-white and the cyan axe glow is modest \u2014 a player.gd material pass (higher-contrast heart print + stronger axe emission) is the next fix, and it lifts the in-game Carl too"
     }
   ],
   "log": [
+    {
+      "t": "22:05",
+      "tag": "PEDESTAL \u2713",
+      "c": "#1a4a2f",
+      "msg": "Sent the one named gap back: the inventory pedestal Carl was a stiff grey mannequin. A builder replaced it with the ACTUAL rigged KarlPlayer rendered live in a SubViewport (own camera + warm key/cyan rim/cool fill, ACES+bloom, forced idle out of the T-pose, front-3/4 yaw sway) \u2014 unmistakably the muscled bearded in-game Carl with his cyan axe on the lit pedestal. Mannequin ~4 -> 8.5. Honest residual: the heart-print boxers wash to near-white and the axe glow is modest under lavapipe; both are player.gd material issues (they'd lift the in-game Carl too), which is the next piece. Verified a quick stage-lighting exposure tweak did NOT fix the boxers, confirming it's the material \u2014 reverted it rather than ship an unverified half-measure."
+    },
     {
       "t": "21:35",
       "tag": "COHESION \u2713",
