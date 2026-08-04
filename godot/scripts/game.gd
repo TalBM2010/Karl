@@ -10,7 +10,7 @@ extends Node3D
 # Fixed pitched iso — the D4 signature. ~43° pitch; pulled close enough that Carl reads
 # as a prominent hero (~1/6 of frame height) sitting in the lower-middle third.
 const CAM_OFFSET := Vector3(7.4, 9.6, 7.4)
-const CAM_OFFSET_BOSS := Vector3(12.0, 15.5, 12.0)   # whole-boss framing for the Juicer
+const CAM_OFFSET_BOSS := Vector3(15.5, 20.0, 15.5)   # whole-boss framing for the Juicer
 const CaptureAgent := preload("res://scripts/capture.gd")
 
 var world: KarlWorld
@@ -109,7 +109,35 @@ func _demo_director(delta: float) -> void:
 			carl.attack()
 
 func _update_camera(delta: float) -> void:
-	_cam_target = _cam_target.lerp(hero_pos, 0.08)
-	_cam_pos = _cam_pos.lerp(_cam_target + CAM_OFFSET, 0.10)
+	# Normally the camera is locked to Carl. During the Juicer fight it eases back toward
+	# CAM_OFFSET_BOSS so the whole 8.9m boss fits in frame above him — the Frame A composition.
+	var off := CAM_OFFSET
+	var aim := 1.6
+	var en: Node = modules.get("enemies", null)
+	if en != null and "boss" in en and en.boss != null:
+		var d: float = en.boss.global_position.distance_to(hero_pos)
+		# Half-open while he lumbers around (Carl stays a big readable hero, boss legs looming),
+		# all the way open the instant he winds up — so the slam always plays as a full-body
+		# wide shot with the whole 8.9m silhouette inside the frame.
+		var w: float = clampf((11.0 - d) / 4.0, 0.0, 1.0)
+		# The slam is the money shot — always give it the full wide frame.
+		if "_boss_phase" in en and (en._boss_phase == "telegraph" or en._boss_phase == "slam"):
+			w = 1.0
+		# NOTE: the look-at stays welded to Carl and only the camera DISTANCE opens up. Leaning
+		# the aim point toward the boss seemed reasonable but it slid Carl down and out of frame
+		# whenever the boss happened to be up-screen. Pulling straight back instead keeps Carl
+		# pinned in the lower third — the D4 composition — and simply buys enough room for an
+		# 8.9m hulk to fit above him from whatever direction he lumbers in.
+		off = CAM_OFFSET.lerp(CAM_OFFSET_BOSS, w)
+		aim = 1.6 + 2.6 * w
+	# FRAME-RATE INDEPENDENT follow. These were raw per-frame lerp weights, which is fine at
+	# 60fps but catastrophic under software Vulkan: at the ~8fps the capture actually renders,
+	# a 0.06 weight is a ~2-second time constant, so Carl — sprinting at 4.2 m/s — simply
+	# outran his own camera and slid off the bottom of the frame behind the skill bar.
+	# Converting to an exponential decay on delta makes the follow identical at any framerate.
+	var kt: float = 1.0 - pow(0.0001, delta * 0.72)
+	var kp: float = 1.0 - pow(0.0001, delta * 0.80)
+	_cam_target = _cam_target.lerp(hero_pos, kt)
+	_cam_pos = _cam_pos.lerp(_cam_target + off, kp)
 	cam.position = _cam_pos
-	cam.look_at(_cam_target + Vector3(0, 1.6, 0))
+	cam.look_at(_cam_target + Vector3(0, aim, 0))

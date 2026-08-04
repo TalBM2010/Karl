@@ -30,15 +30,18 @@ const COL_PHYS := Color(1.25, 1.22, 1.14)     # bone white
 const COL_AETHER := Color(0.72, 0.20, 1.85)   # aether violet
 const COL_BLOCK := Color(0.52, 0.57, 0.63)    # dull grey
 
-# Ability energy is drawn ADDITIVELY, so it has to out-run whatever the floor is doing —
-# these sit well past the white point so they bloom instead of tinting the background.
-const COL_CYAN := Color(0.28, 1.00, 1.70)
-const COL_VIOLET := Color(0.46, 0.15, 1.70)
-const COL_GOLD := Color(1.35, 0.80, 0.28)
-const CLEAVE_COL := Color(0.45, 1.30, 2.00)   # the swing arc is the brightest transient
+# Ability energy is drawn ADDITIVELY. It has to out-run the floor, but it must NOT out-run
+# Carl: these sit only just past the white point. Two overlapping additive surfaces at 1.7 were
+# summing to ~3.4 and clipping to a flat white blob once ACES + bloom got hold of them, which
+# buried both the hero and the cavern. Kept near 1.0-1.4 they bloom and still hold their hue
+# when they overlap.
+const COL_CYAN := Color(0.24, 0.82, 1.32)
+const COL_VIOLET := Color(0.38, 0.13, 1.18)
+const COL_GOLD := Color(1.02, 0.60, 0.21)
+const CLEAVE_COL := Color(0.34, 0.92, 1.42)   # the swing arc is the brightest transient
 
-const TEXT_LIFE := 1.35
-const MAX_TEXT := 5
+const TEXT_LIFE := 1.15
+const MAX_TEXT := 3
 
 var game: Node = null
 var cam: Camera3D = null
@@ -77,10 +80,16 @@ var _shake := 0.0
 var _shake_t := 0.0
 
 # --- demo director -----------------------------------------------------------------------
+# --- big-effect arbiter -------------------------------------------------------------------
+## Abilities PUNCTUATE the scene; they never erase it. Only one screen-filling effect may be
+## alive at a time, so the frame always falls back to "moody cavern + readable Carl" between
+## beats instead of compounding four additive light shows on top of each other.
+var _big_lock := 0.0
+
 var _demo := false
 var _t := 0.0
 var _next_hit := 0.35
-var _next_ability := 0.9
+var _next_ability := 1.4
 var _ability_i := 0
 var _hit_i := 0
 var _text_seq := 0
@@ -144,6 +153,7 @@ func _process(delta: float) -> void:
 	# lavapipe gives huge, jittery deltas — clamp so nothing teleports through its animation
 	var dt: float = clamp(delta, 0.0, 0.12)
 	_t += dt
+	_big_lock = maxf(0.0, _big_lock - dt)
 	_update_texts(dt)
 	_update_effects(dt)
 	_update_aura(dt)
@@ -161,7 +171,7 @@ func _demo_director(dt: float) -> void:
 
 	_next_hit -= dt
 	if _next_hit <= 0.0:
-		_next_hit = 0.60
+		_next_hit = 0.85
 		_hit_i += 1
 		# phantom targets arranged in front of Carl, so numbers spread across the frame
 		var ang: float = f + _rng.randf_range(-1.5, 1.5)
@@ -186,9 +196,11 @@ func _demo_director(dt: float) -> void:
 				heavy_impact(tp)
 				death_burst(tp)
 
+	# Abilities are seasoning: one every ~3s, and the arbiter drops any that would land while
+	# another big effect is still on screen. Between beats the frame is just Carl and the cavern.
 	_next_ability -= dt
-	if _next_ability <= 0.0:
-		_next_ability = 0.95
+	if _next_ability <= 0.0 and _big_lock <= 0.0:
+		_next_ability = 3.1
 		_ability_i += 1
 		match _ability_i % 4:
 			0: cleave(hp, f)
@@ -210,32 +222,36 @@ func spawn_damage(pos: Vector3, amount: int, type: int) -> void:
 
 	var col := COL_PHYS
 	var label := ""
-	var ps := 0.00042         # screen-space size per font pixel (labels are fixed_size)
+	# Screen-space size per font pixel (labels are fixed_size). A fixed_size Label3D at
+	# font_size 128 covers roughly (128 * ps * 1450) pixels of a 1000px-tall 38-degree frame, so
+	# a crit at 0.00062 was ~115px tall and a third of the frame wide — it covered the boss.
+	# Retuned so a crit still lands the punch (~72px) while the enemy it belongs to stays visible.
+	var ps := 0.00026
 	var sub_text := ""
 	var sub_col := COL_PHYS
-	var outline := 16
+	var outline := 12
 
 	match type:
 		DmgType.CRIT:
 			col = COL_CRIT
-			ps = 0.00062
-			outline = 20
+			ps = 0.00039
+			outline = 14
 			sub_text = "CRITICAL!"
 			sub_col = Color(1.45, 0.85, 0.22)
 		DmgType.AETHER:
 			col = COL_AETHER
-			ps = 0.00044
+			ps = 0.00027
 			sub_text = "AETHER"
 			sub_col = Color(0.80, 0.38, 1.55)
 		DmgType.BLOCKED:
 			col = COL_BLOCK
-			ps = 0.00032
-			outline = 14
+			ps = 0.00021
+			outline = 10
 			sub_text = "BLOCKED"
 			sub_col = Color(0.48, 0.53, 0.60)
 		_:
 			col = COL_PHYS
-			ps = 0.00042
+			ps = 0.00026
 			sub_text = "PHYSICAL"
 			sub_col = Color(0.86, 0.83, 0.76)
 
@@ -269,8 +285,8 @@ func spawn_damage(pos: Vector3, amount: int, type: int) -> void:
 	if cam:
 		right = cam.global_transform.basis.x
 	holder.visible = true
-	holder.position = pos + right * ((float(slot) - 1.5) * unit * 1.15 + _rng.randf_range(-0.2, 0.2)) \
-		+ Vector3(0, 2.1 + unit * 0.75 * float(slot % 2) + _rng.randf_range(-0.15, 0.3), 0)
+	holder.position = pos + right * ((float(slot) - 1.5) * unit * 1.75 + _rng.randf_range(-0.2, 0.2)) \
+		+ Vector3(0, 2.1 + unit * 1.15 * float(slot % 2) + _rng.randf_range(-0.15, 0.3), 0)
 	holder.scale = Vector3(0.25, 0.25, 0.25)
 
 	var vx := _rng.randf_range(-0.7, 0.7)
@@ -332,12 +348,16 @@ func _update_texts(dt: float) -> void:
 		var v: Vector3 = e["v"]
 		n.position = (e["p0"] as Vector3) + v * t + Vector3(0, -0.62, 0) * t * t
 
-		# scale punch: overshoot to 1.22 then settle
+		# Scale punch: overshoot then settle. It used to start at 0.25, which looks great at
+		# 60fps but under software Vulkan the frame that gets captured often lands inside that
+		# first 0.1 of the life — so a crit would render at a quarter size next to a full-size
+		# normal hit and just read as a bug. Starting at 0.62 keeps the pop while making every
+		# sampled frame a legible number.
 		var s := 1.0
 		if k < 0.10:
-			s = lerp(0.25, 1.22, k / 0.10)
+			s = lerp(0.82, 1.16, k / 0.10)
 		elif k < 0.26:
-			s = lerp(1.22, 1.0, (k - 0.10) / 0.16)
+			s = lerp(1.16, 1.0, (k - 0.10) / 0.16)
 		elif k > 0.80:
 			s = lerp(1.0, 0.86, (k - 0.80) / 0.20)
 		n.scale = Vector3(s, s, s)
@@ -390,10 +410,10 @@ func hit_impact(pos: Vector3, tint: Color) -> void:
 
 ## Crit / heavy hit: bigger sparks, a hot flash, an expanding ground shock ring, camera shake.
 func heavy_impact(pos: Vector3) -> void:
-	_sparks(pos + Vector3(0, 1.2, 0), Color(2.4, 1.2, 0.3), 1.7)
-	_flash(pos + Vector3(0, 1.2, 0), Color(1.35, 0.70, 0.20), 1.35, 0.30)
-	shock_ring(pos, Color(1.55, 0.68, 0.16), 0.7, 5.4, 0.55)
-	shake(0.34, 0.42)
+	_sparks(pos + Vector3(0, 1.2, 0), Color(1.85, 0.95, 0.26), 1.45)
+	_flash(pos + Vector3(0, 1.2, 0), Color(1.10, 0.58, 0.17), 0.95, 0.26)
+	shock_ring(pos, Color(1.20, 0.54, 0.13), 0.7, 4.0, 0.50)
+	shake(0.30, 0.40)
 
 
 ## Crystal-shard death burst — solid emissive shards flung outward, plus a violet flash.
@@ -404,9 +424,9 @@ func death_burst(pos: Vector3) -> void:
 	p.emitting = true
 	p.restart()
 	_live.append({"n": p, "t": 0.0, "d": 1.5, "k": "shards", "kind": "particles"})
-	_flash(pos + Vector3(0, 1.0, 0), COL_VIOLET, 1.5, 0.40)
-	shock_ring(pos, COL_VIOLET, 0.5, 4.2, 0.6)
-	shake(0.22, 0.35)
+	_flash(pos + Vector3(0, 1.0, 0), COL_VIOLET, 0.95, 0.30)
+	shock_ring(pos, COL_VIOLET, 0.5, 3.2, 0.55)
+	shake(0.20, 0.32)
 
 
 func _sparks(pos: Vector3, tint: Color, scale: float) -> void:
@@ -448,30 +468,44 @@ func shock_ring(pos: Vector3, tint: Color, r0: float, r1: float, dur: float) -> 
 # ==========================================================================================
 #  3. ABILITY VFX
 # ==========================================================================================
+## Reserve the "one big effect on screen" slot. Returns false if another ability is still
+## playing, in which case the caller silently drops its effect — a skipped flourish is always
+## cheaper than an unreadable frame.
+func _claim_big(lock: float) -> bool:
+	if _big_lock > 0.0:
+		return false
+	_big_lock = lock
+	return true
+
+
 ## CLEAVE — a wide cyan energy crescent sweeping through the arc in front of Carl.
 func cleave(pos: Vector3, facing: float) -> void:
+	if not _claim_big(0.6):
+		return
 	var mi: MeshInstance3D = _acquire("crescent", Callable(self, "_make_crescent"))
 	mi.position = pos + Vector3(0, 1.05, 0)
 	mi.visible = true
 	var mat: StandardMaterial3D = mi.material_override
 	mat.albedo_color = Color(CLEAVE_COL.r, CLEAVE_COL.g, CLEAVE_COL.b, 1.0)
-	_live.append({"n": mi, "t": 0.0, "d": 0.80, "k": "crescent", "kind": "cleave", "face": facing})
+	_live.append({"n": mi, "t": 0.0, "d": 0.55, "k": "crescent", "kind": "cleave", "face": facing})
 	# a couple of sparks riding the leading edge
-	_sparks(pos + Vector3(sin(facing) * 2.6, 1.3, cos(facing) * 2.6), COL_CYAN, 0.9)
+	_sparks(pos + Vector3(sin(facing) * 2.6, 1.3, cos(facing) * 2.6), COL_CYAN, 0.8)
 	shake(0.12, 0.22)
 
 
-## AETHER NOVA — twin violet shockwave rings plus an upward burst of aether motes.
+## AETHER NOVA — a violet shockwave ring plus an upward burst of aether motes.
 func aether_nova(pos: Vector3) -> void:
+	if not _claim_big(1.3):
+		return
 	var mi: MeshInstance3D = _acquire("ringwide", Callable(self, "_make_ring_wide"))
 	mi.position = pos + Vector3(0, 0.12, 0)
 	mi.visible = true
 	var mat: StandardMaterial3D = mi.material_override
 	mat.albedo_color = Color(COL_VIOLET.r, COL_VIOLET.g, COL_VIOLET.b, 1.0)
-	_live.append({"n": mi, "t": 0.0, "d": 1.15, "k": "ringwide", "kind": "ring",
-		"r0": 0.4, "r1": 7.6, "tint": COL_VIOLET})
-	shock_ring(pos, Color(0.72, 0.26, 1.95), 0.3, 5.0, 1.0)
-	_flash(pos + Vector3(0, 1.2, 0), COL_VIOLET, 1.7, 0.45)
+	_live.append({"n": mi, "t": 0.0, "d": 0.85, "k": "ringwide", "kind": "ring",
+		"r0": 0.4, "r1": 5.4, "tint": COL_VIOLET})
+	shock_ring(pos, Color(0.55, 0.20, 1.35), 0.3, 3.6, 0.7)
+	_flash(pos + Vector3(0, 1.2, 0), COL_VIOLET, 0.85, 0.26)
 
 	var p: GPUParticles3D = _acquire("nova", Callable(self, "_make_nova"))
 	p.position = pos + Vector3(0, 0.4, 0)
@@ -479,33 +513,41 @@ func aether_nova(pos: Vector3) -> void:
 	p.emitting = true
 	p.restart()
 	_live.append({"n": p, "t": 0.0, "d": 1.6, "k": "nova", "kind": "particles"})
-	shake(0.26, 0.4)
+	shake(0.22, 0.35)
 
 
 ## WHIRLWIND — Carl wreathed in spinning blue energy blades.
-func whirlwind(_pos: Vector3 = Vector3.ZERO, dur: float = 2.1) -> void:
+func whirlwind(_pos: Vector3 = Vector3.ZERO, dur: float = 1.35) -> void:
+	if not _claim_big(dur + 0.15):
+		return
 	_whirl_t = 0.0
 	_whirl_d = dur
 	_whirl.visible = true
-	shock_ring(_hero(), COL_CYAN, 0.8, 3.4, 0.7)
-	shake(0.10, 0.5)
+	# Dimmer and tighter than the impact rings: at full COL_CYAN this was a hard-edged torus
+	# that read as a UI element sitting on top of the scene rather than energy inside it.
+	shock_ring(_hero(), Color(0.18, 0.55, 0.90), 0.8, 2.5, 0.55)
+	shake(0.10, 0.45)
 
 
-## WAR CRY — a radiant ground rune and an upward light pillar under Carl.
+## WAR CRY — a radiant ground rune and a short upward light shaft under Carl.
+## The shaft used to be an 11m, 55%-alpha column that swallowed the hero it was buffing; it is
+## now a brief waist-to-shoulder flare that reads as an upward surge without hiding Carl.
 func war_cry(pos: Vector3) -> void:
+	if not _claim_big(1.25):
+		return
 	var rune: MeshInstance3D = _acquire("rune", Callable(self, "_make_rune"))
 	rune.position = pos + Vector3(0, 0.07, 0)
 	rune.visible = true
-	_live.append({"n": rune, "t": 0.0, "d": 1.5, "k": "rune", "kind": "rune"})
+	_live.append({"n": rune, "t": 0.0, "d": 1.0, "k": "rune", "kind": "rune"})
 
 	var pillar: Node3D = _acquire("pillar", Callable(self, "_make_pillar"))
 	pillar.position = pos
 	pillar.visible = true
-	_live.append({"n": pillar, "t": 0.0, "d": 1.2, "k": "pillar", "kind": "pillar"})
+	_live.append({"n": pillar, "t": 0.0, "d": 0.70, "k": "pillar", "kind": "pillar"})
 
-	shock_ring(pos, COL_GOLD, 0.6, 6.6, 0.9)
-	_sparks(pos + Vector3(0, 1.0, 0), COL_GOLD, 1.0)
-	shake(0.28, 0.45)
+	shock_ring(pos, COL_GOLD, 0.6, 4.6, 0.75)
+	_sparks(pos + Vector3(0, 1.0, 0), COL_GOLD, 0.9)
+	shake(0.24, 0.40)
 
 # ==========================================================================================
 #  EFFECT UPDATE
@@ -534,24 +576,24 @@ func _update_effects(dt: float) -> void:
 				mi2.scale = Vector3(s, s, s)
 				var fa: float = pow(1.0 - k, 2.0)
 				var fm: StandardMaterial3D = mi2.material_override
-				fm.albedo_color.a = fa * 0.55
+				fm.albedo_color.a = fa * 0.30
 				var lt: OmniLight3D = n.get_child(1)
-				lt.light_energy = 2.8 * fa
+				lt.light_energy = 1.4 * fa
 			"cleave":
 				# the crescent sweeps through the swing arc while it stretches and fades
 				var face: float = e["face"]
 				n.rotation = Vector3(-0.28, face - 1.00 + 2.0 * k, 0.0)
-				var cs: float = 0.72 + 0.50 * pow(k, 0.7)
+				var cs: float = 0.62 + 0.40 * pow(k, 0.7)
 				n.scale = Vector3(cs, 1.0, cs)
 				var ca: float = sin(clamp(k, 0.0, 1.0) * PI)
-				ca = pow(ca, 0.40) * 0.85
+				ca = pow(ca, 0.60) * 0.52
 				var cm: StandardMaterial3D = (n as MeshInstance3D).material_override
 				cm.albedo_color = Color(CLEAVE_COL.r, CLEAVE_COL.g, CLEAVE_COL.b, ca)
 			"rune":
-				var rs: float = 3.2 * (0.45 + 0.55 * pow(k, 0.35))
+				var rs: float = 2.15 * (0.45 + 0.55 * pow(k, 0.35))
 				n.scale = Vector3(rs, 1.0, rs)
 				n.rotation.y = k * 1.4
-				var ra: float = sin(clamp(k, 0.0, 1.0) * PI)
+				var ra: float = sin(clamp(k, 0.0, 1.0) * PI) * 0.42
 				var rm: StandardMaterial3D = (n as MeshInstance3D).material_override
 				rm.albedo_color = Color(COL_GOLD.r, COL_GOLD.g, COL_GOLD.b, ra)
 			"pillar":
@@ -559,8 +601,10 @@ func _update_effects(dt: float) -> void:
 				var pw: float = (1.0 - 0.45 * k) * (0.6 + 0.6 * pow(k, 0.3))
 				n.scale = Vector3(pw, ph, pw)
 				n.rotation.y = t * 3.0
+				# a sharp in-and-out spike, not a plateau: the shaft must not sit at full
+				# brightness for most of its life the way pow(.., 0.7) made it
 				var pa: float = sin(clamp(k, 0.0, 1.0) * PI)
-				pa = pow(pa, 0.7)
+				pa = pow(pa, 1.5)
 				for c in n.get_children():
 					var pmi := c as MeshInstance3D
 					if pmi:
@@ -585,22 +629,25 @@ func _build_aura() -> void:
 	_aura.name = "AetherAura"
 	root.add_child(_aura)
 
-	# a soft glow pool on the floor so Carl is always standing in his own light
+	# A soft glow pool on the floor so Carl is always standing in his own light. This is the
+	# ONLY part of the aura allowed to be obvious, because it sits under him instead of over him.
 	var pool := MeshInstance3D.new()
 	var pq := QuadMesh.new()
-	pq.size = Vector2(4.6, 4.6)
+	pq.size = Vector2(3.4, 3.4)
 	pq.orientation = PlaneMesh.FACE_Y
 	pool.mesh = pq
-	var pmat := _add_mat(Color(0.34, 0.14, 1.20, 0.16))
+	var pmat := _add_mat(Color(0.30, 0.12, 0.95, 0.10))
 	pmat.albedo_texture = _tex_glow
 	pool.material_override = pmat
 	pool.position = Vector3(0, 0.04, 0)
 	_aura.add_child(pool)
 
+	# A HINT of energy, not a set of dominating rings. The waist-high and shoulder-high bands
+	# used to run at 50-62% alpha and cut straight across Carl's torso and head in every frame;
+	# the shoulder band is gone entirely and what remains is barely-there ambient motion.
 	var specs := [
-		{"y": 0.12, "r": 1.70, "tilt": Vector3(0, 0, 0), "spd": 0.55, "col": COL_VIOLET, "a": 0.62},
-		{"y": 1.05, "r": 1.25, "tilt": Vector3(0.30, 0, 0.16), "spd": -0.85, "col": COL_CYAN, "a": 0.50},
-		{"y": 1.90, "r": 0.85, "tilt": Vector3(-0.24, 0, -0.30), "spd": 1.15, "col": COL_VIOLET, "a": 0.38},
+		{"y": 0.10, "r": 1.45, "tilt": Vector3(0, 0, 0), "spd": 0.55, "col": COL_VIOLET, "a": 0.17},
+		{"y": 1.05, "r": 1.05, "tilt": Vector3(0.30, 0, 0.16), "spd": -0.85, "col": COL_CYAN, "a": 0.10},
 	]
 	for s in specs:
 		var mi := MeshInstance3D.new()
@@ -615,12 +662,12 @@ func _build_aura() -> void:
 		_aura_rings.append({"n": mi, "spd": float(s["spd"]), "tilt": s["tilt"], "a": float(s["a"])})
 
 	_aura_motes = GPUParticles3D.new()
-	_aura_motes.amount = 18
+	_aura_motes.amount = 11
 	_aura_motes.lifetime = 2.6
 	_aura_motes.preprocess = 1.5
 	_aura_motes.explosiveness = 0.0
 	_aura_motes.draw_pass_1 = _mesh_quad
-	_aura_motes.material_override = _particle_mat(Color(0.75, 0.45, 2.2, 1.0))
+	_aura_motes.material_override = _particle_mat(Color(0.55, 0.34, 1.45, 1.0))
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = 1.1
@@ -629,9 +676,9 @@ func _build_aura() -> void:
 	pm.initial_velocity_min = 0.5
 	pm.initial_velocity_max = 1.1
 	pm.gravity = Vector3(0, 0.4, 0)
-	pm.scale_min = 0.10
-	pm.scale_max = 0.24
-	pm.color = Color(0.7, 0.4, 2.0, 1.0)
+	pm.scale_min = 0.06
+	pm.scale_max = 0.15
+	pm.color = Color(0.55, 0.32, 1.35, 1.0)
 	pm.alpha_curve = _fade_curve()
 	_aura_motes.process_material = pm
 	_aura_motes.position = Vector3(0, 0.4, 0)
@@ -666,10 +713,10 @@ func _build_whirlwind() -> void:
 		var a: float = TAU * float(i) / 6.0
 		var blade := MeshInstance3D.new()
 		blade.mesh = _mesh_blade
-		var mat := _add_mat(Color(0.32, 1.05, 1.70, 0.72))
+		var mat := _add_mat(Color(0.26, 0.82, 1.30, 0.30))
 		mat.albedo_texture = _tex_streak
 		blade.material_override = mat
-		blade.set_meta("base_a", 0.72)
+		blade.set_meta("base_a", 0.30)
 		blade.position = Vector3(sin(a) * 1.62, 0.45 + 0.32 * i, cos(a) * 1.62)
 		blade.rotation = Vector3(0.10, a + PI * 0.5, 0.95)
 		_whirl.add_child(blade)
@@ -678,10 +725,10 @@ func _build_whirlwind() -> void:
 	for j in range(2):
 		var band := MeshInstance3D.new()
 		band.mesh = _mesh_ring
-		band.material_override = _add_mat(Color(0.26, 0.88, 1.50, 0.62))
+		band.material_override = _add_mat(Color(0.22, 0.70, 1.18, 0.24))
 		var rr: float = 1.7 - 0.35 * j
 		band.scale = Vector3(rr, 1.0, rr)
-		band.set_meta("base_a", 0.62)
+		band.set_meta("base_a", 0.24)
 		band.position = Vector3(0, 0.55 + 1.1 * j, 0)
 		band.rotation = Vector3(0.22 * (1 if j == 0 else -1), 0, 0.18)
 		_whirl.add_child(band)
@@ -920,8 +967,8 @@ func _make_rune() -> MeshInstance3D:
 func _make_pillar() -> Node3D:
 	var n := Node3D.new()
 	var specs := [
-		{"w": 2.30, "h": 11.0, "a": 0.55, "c": Color(1.60, 1.02, 0.38)},
-		{"w": 4.60, "h": 8.5, "a": 0.20, "c": Color(1.10, 0.62, 0.22)},
+		{"w": 1.15, "h": 5.2, "a": 0.20, "c": Color(1.15, 0.74, 0.28)},
+		{"w": 2.40, "h": 3.9, "a": 0.075, "c": Color(0.85, 0.48, 0.18)},
 	]
 	for s in specs:
 		for i in range(3):

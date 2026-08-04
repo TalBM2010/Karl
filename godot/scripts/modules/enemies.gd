@@ -260,18 +260,34 @@ func _limb(parent: Node, a: Vector3, b: Vector3, r0: float, r1: float, mat: Mate
 	return m
 
 ## Nameplate + level + tiny health bar, billboarded above a creature.
+## Everything goes under one holder stashed as the parent's "plate" meta, so the AI tick can
+## fade a whole plate out as a unit (see _tick_spiders) instead of leaving six identical
+## "Crystal Arachnid" labels littered across the frame at all times.
 func _plate(parent: Node3D, text: String, lvl: int, col: Color, y: float, w: float) -> void:
+	var holder := Node3D.new()
+	holder.name = "Plate"
+	parent.add_child(holder)
+	parent.set_meta("plate", holder)
+
 	var lab := Label3D.new()
 	lab.text = "%s  ⟨%d⟩" % [text, lvl]
-	lab.font_size = 96
-	lab.pixel_size = w * 0.0016
+	# CRISPNESS: this was a WORLD-space label — a 96px glyph squeezed into ~10 screen pixels at
+	# the camera's 16m standoff, i.e. a 10:1 downsample into unreadable mush. It is now
+	# fixed_size, so the glyph is rastered at roughly the size it is displayed at, and holds a
+	# constant, legible screen height no matter where the creature is standing.
+	lab.font_size = 44
+	lab.fixed_size = true
+	lab.pixel_size = 0.000255 if w < 1.5 else 0.000420
 	lab.modulate = col
-	lab.outline_size = 26
-	lab.outline_modulate = Color(0, 0, 0, 0.9)
+	lab.outline_size = 9
+	lab.outline_modulate = Color(0, 0, 0, 0.92)
+	lab.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	lab.position = Vector3(0, y + w * 0.16, 0)
 	lab.no_depth_test = false
-	parent.add_child(lab)
+	holder.add_child(lab)
+	holder.set_meta("label", lab)
+	holder.set_meta("base_col", col)
 
 	var back := StandardMaterial3D.new()
 	back.albedo_color = Color(0.02, 0.02, 0.03, 0.85)
@@ -288,10 +304,10 @@ func _plate(parent: Node3D, text: String, lvl: int, col: Color, y: float, w: flo
 
 	var qb := QuadMesh.new()
 	qb.size = Vector2(w, w * 0.09)
-	_mi(parent, qb, back, Vector3(0, y, 0))
+	_mi(holder, qb, back, Vector3(0, y, 0))
 	var qf := QuadMesh.new()
 	qf.size = Vector2(w * 0.86, w * 0.055)
-	_mi(parent, qf, fill, Vector3(0, y, 0.001))
+	_mi(holder, qf, fill, Vector3(0, y, 0.001))
 
 # ================================================================= Princess Donut
 func _build_donut() -> void:
@@ -612,10 +628,25 @@ func _build_boss() -> void:
 	_boss_light.position = Vector3(0, 1.2, 0)
 	boss.add_child(_boss_light)
 
+	# A dedicated low warm fill riding with him. The cavern grade is deliberately moody and it
+	# was crushing an 8.9m dark-red hulk into a flat black silhouette at boss-cam distance; this
+	# picks his musculature back out of the shadows without touching the world's global grade.
+	var boss_fill := OmniLight3D.new()
+	boss_fill.light_color = Color(1.0, 0.62, 0.58)
+	boss_fill.light_energy = 1.15
+	boss_fill.omni_range = 13.0
+	boss_fill.omni_attenuation = 1.6
+	boss_fill.shadow_enabled = false
+	boss_fill.position = Vector3(0.0, BOSS_HEIGHT * 0.72, 3.1)
+	boss.add_child(boss_fill)
+
 	# scale the whole hulk to the target height
 	var k := BOSS_HEIGHT / 8.15
 	b.scale = Vector3(k, k, k)
-	_plate(boss, "The Juicer", 15, Color(1.0, 0.42, 0.30), BOSS_HEIGHT + 0.9, 3.4)
+	# NO world-space nameplate on the boss: the HUD already owns his identity with a full
+	# broadcast boss bar (name, subtitle, level diamond, affix pips). Now that the boss camera
+	# actually frames all 8.9m of him, a floating "The Juicer ⟨15⟩" landed right on top of that
+	# bar and read as a smear of doubled text.
 	boss.position = _boss_pos
 
 func _build_jug(parent: Node3D, wrist: Vector3) -> void:
@@ -727,6 +758,18 @@ func _tick_spiders(delta: float, hero: Vector3) -> void:
 			n.position += (dir + strafe).normalized() * float(s["speed"]) * delta
 		var face := hero - n.position
 		n.rotation.y = lerp_angle(n.rotation.y, atan2(face.x, face.z), 0.12)
+
+		# Only the arachnids actually engaging Carl keep a nameplate. Stragglers that have
+		# fallen behind fade theirs out, so the frame carries two or three readable plates
+		# instead of six competing for the eye.
+		if n.has_meta("plate"):
+			var holder: Node3D = n.get_meta("plate")
+			var a: float = clampf((10.5 - face.length()) / 2.5, 0.0, 1.0)
+			holder.visible = a > 0.03
+			if holder.visible and holder.has_meta("label"):
+				var pl: Label3D = holder.get_meta("label")
+				var bc: Color = holder.get_meta("base_col")
+				pl.modulate = Color(bc.r, bc.g, bc.b, a)
 		var body: Node3D = n.get_meta("body")
 		body.position.y = 0.62 + sin(_t * 5.0 + float(s["phase"])) * 0.04
 		body.rotation.z = sin(_t * 5.0 + float(s["phase"]) + 1.0) * 0.05
@@ -754,7 +797,7 @@ func _tick_boss(delta: float, hero: Vector3) -> void:
 		"walk":
 			# he holds at ~9.5 m: any closer and an 8.9 m hulk simply falls out of the
 			# game's fixed iso frame, so the whole silhouette stops reading.
-			if d > 9.5:
+			if d > 9.0:
 				_boss_pos += to.normalized() * 1.30 * delta
 			_boss_cd -= delta
 			if _boss_cd <= 0.0 and d < 16.0:
