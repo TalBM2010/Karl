@@ -9,6 +9,7 @@ extends Node3D
 
 const CAM_OFFSET := Vector3(11.5, 15.5, 11.5)   # fixed pitched iso — the D4 signature
 const CAM_OFFSET_BOSS := Vector3(18.6, 25.1, 18.6)
+const CaptureAgent := preload("res://scripts/capture.gd")
 
 var world: KarlWorld
 var carl: KarlPlayer
@@ -43,7 +44,7 @@ func _ready() -> void:
 	cam.position = _cam_pos
 	cam.look_at(_cam_target + Vector3(0, 2.5, 0))
 
-	var cap := load("res://scripts/capture.gd").new()
+	var cap: Node = CaptureAgent.new()
 	cap.name = "Capture"
 	add_child(cap)
 

@@ -157,12 +157,12 @@ func _build_crystals() -> void:
 		{"n": 16, "min_r": 45.0, "max_r": 95.0, "s": 3.6, "light": false},
 	]
 	for band in bands:
-		for i in band["n"]:
+		for i in int(band["n"]):
 			var ang := rng.randf() * TAU
 			var rad: float = rng.randf_range(band["min_r"], band["max_r"])
 			var pos := Vector3(cos(ang) * rad, 0, sin(ang) * rad)
 			var hue: Color = hues[rng.randi() % hues.size()]
-			var cluster := _crystal_cluster(rng, hue, band["s"], band["light"])
+			var cluster := _crystal_cluster(rng, hue, float(band["s"]), bool(band["light"]))
 			cluster.position = pos
 			add_child(cluster)
 			crystals.append(cluster)
