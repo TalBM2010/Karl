@@ -33,11 +33,11 @@ figcaption{font-size:10.5px;color:#7fa9bd;text-align:center;margin-top:4px;lette
 </style>
 <div class="wrap">
   <h1>DUNGEON KARL — BUILD PROGRESS</h1>
-  <div class="sub">DIABLO IV BAR · GALACTIC OBSERVATION PROTOCOL · UPDATED 2026-08-04 07:30 UTC</div>
+  <div class="sub">DIABLO IV BAR · GALACTIC OBSERVATION PROTOCOL · UPDATED 2026-08-04 20:40 UTC</div>
 
   <div class="hero"><div class="row">
-    <div><div class="k">6</div><div class="l">CURRENT WAVE</div></div>
-    <div><div class="k">5/6</div><div class="l">PIECES WINNING</div></div>
+    <div><div class="k">7</div><div class="l">CURRENT WAVE</div></div>
+    <div><div class="k">5/8</div><div class="l">PIECES WINNING</div></div>
     <div><div class="k">9.3</div><div class="l">OVERALL / 10</div></div>
     <div><div class="k">13</div><div class="l">CRITIC ROUNDS</div></div>
   </div></div>
@@ -75,13 +75,23 @@ figcaption{font-size:10.5px;color:#7fa9bd;text-align:center;margin-top:4px;lette
     <div class="pc-s">WINNING — rigged glTF Carl + 55-piece bone-attached muscle suit, beard, heart boxers, cyan axe; crowned Persian Donut; faceted arachnids</div>
     
   </div><div class="pc">
-    <div class="pc-h"><span class="dot" style="background:#6f8a99"></span><b>Content systems (loot, ceremony, floors, screens)</b><span class="sc">0.0/10</span></div>
-    <div class="track"><i style="width:0%;background:#6f8a99"></i></div>
-    <div class="pc-s">QUEUED — still only in the three.js build — next to port to Godot</div>
+    <div class="pc-h"><span class="dot" style="background:#ffcf6a"></span><b>Godot loot & drops (beams, boxes, gold)</b><span class="sc">0.0/10</span></div>
+    <div class="track"><i style="width:0%;background:#ffcf6a"></i></div>
+    <div class="pc-s">BUILDING — porting src/loot.js + lootbox.js — rarity beams, ground labels, gold piles, System loot-box ceremony</div>
+    
+  </div><div class="pc">
+    <div class="pc-h"><span class="dot" style="background:#ffcf6a"></span><b>Godot floor progression + System intro screens</b><span class="sc">0.0/10</span></div>
+    <div class="track"><i style="width:0%;background:#ffcf6a"></i></div>
+    <div class="pc-s">BUILDING — porting src/floors.js — DCC floor order + the System floor-intro announcement overlay</div>
+    
+  </div><div class="pc">
+    <div class="pc-h"><span class="dot" style="background:#ffcf6a"></span><b>Godot inventory + character sheet</b><span class="sc">0.0/10</span></div>
+    <div class="track"><i style="width:0%;background:#ffcf6a"></i></div>
+    <div class="pc-s">BUILDING — porting src/screens.js — Frames C/D: grid inventory, rarity borders, stat columns, lit pedestal</div>
     
   </div></div>
 
-  <div class="card"><h2>Activity log</h2><div class="log"><div class="e"><time>07:30</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">GODOT ✓</span> Godot port cohered and VERIFIED — beats the three.js build on world, HUD, boss and combat. Overall 9.0 -> 9.3.</span></div><div class="e"><time>07:22</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">COHESION ✓</span> Whole-game pass: ability arbiter stops VFX blowout (cadence 0.95s->3.1s, war-cry shaft cut, aura reduced to a hint), damage numbers 115px->72px, nameplates fixed_size+mipmapped. Fixed 2 of my camera bugs: unused CAM_OFFSET_BOSS (boss cropped to legs) and framerate-dependent follow (Carl outran the camera at 8fps).</span></div><div class="e"><time>06:55</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">BUILDERS ✓</span> All four Godot builders landed: world art direction (root cause: emission_operator defaults to ADD), characters (Carl muscle suit, Donut, arachnids, Juicer), HUD, combat VFX.</span></div><div class="e"><time>05:50</time><span><span class="badge" style="background:#3a1a4a;color:#cfe">GODOT</span> Proved Godot 4.3 Forward+ runs here on software Vulkan (lavapipe) under Xvfb and captures frames in ~13s — so the critic loop works in a real engine. Correcting my earlier claim.</span></div><div class="e"><time>08:42</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">BUILDER ✓</span> Loot builder: rarity drop beams, ground labels, gold piles, DCC System loot boxes that pop open + auto-collect.</span></div><div class="e"><time>08:35</time><span><span class="badge" style="background:#12303f;color:#cfe">WAVE 2</span> Launched 3 parallel builders on loot, screens, and the boss via a plug-in API — no game-loop collisions.</span></div><div class="e"><time>08:28</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">COHESION ✓</span> Whole-game smoothing pass #1: hero prominence fixed, scale/color cohered, world & combat wins preserved. 7.0 → 7.3.</span></div><div class="e"><time>08:10</time><span><span class="badge" style="background:#3a2a12;color:#cfe">CRITIC r2</span> Wave 1: world/lighting/combat WIN (~8); overall 4.2 → 7.0.</span></div></div></div>
+  <div class="card"><h2>Activity log</h2><div class="log"><div class="e"><time>20:40</time><span><span class="badge" style="background:#12303f;color:#cfe">WAVE 7</span> Fresh session: rebuilt the cold toolchain (Godot import pass restored the class cache; warm capture verified rendering). Launched 3 parallel builders porting the last three.js-only systems into Godot — loot, floors, inventory/character screens — each in an isolated lab to avoid shader-cache races.</span></div><div class="e"><time>07:30</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">GODOT ✓</span> Godot port cohered and VERIFIED — beats the three.js build on world, HUD, boss and combat. Overall 9.0 -> 9.3.</span></div><div class="e"><time>07:22</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">COHESION ✓</span> Whole-game pass: ability arbiter stops VFX blowout (cadence 0.95s->3.1s, war-cry shaft cut, aura reduced to a hint), damage numbers 115px->72px, nameplates fixed_size+mipmapped. Fixed 2 of my camera bugs: unused CAM_OFFSET_BOSS (boss cropped to legs) and framerate-dependent follow (Carl outran the camera at 8fps).</span></div><div class="e"><time>06:55</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">BUILDERS ✓</span> All four Godot builders landed: world art direction (root cause: emission_operator defaults to ADD), characters (Carl muscle suit, Donut, arachnids, Juicer), HUD, combat VFX.</span></div><div class="e"><time>05:50</time><span><span class="badge" style="background:#3a1a4a;color:#cfe">GODOT</span> Proved Godot 4.3 Forward+ runs here on software Vulkan (lavapipe) under Xvfb and captures frames in ~13s — so the critic loop works in a real engine. Correcting my earlier claim.</span></div><div class="e"><time>08:42</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">BUILDER ✓</span> Loot builder: rarity drop beams, ground labels, gold piles, DCC System loot boxes that pop open + auto-collect.</span></div><div class="e"><time>08:35</time><span><span class="badge" style="background:#12303f;color:#cfe">WAVE 2</span> Launched 3 parallel builders on loot, screens, and the boss via a plug-in API — no game-loop collisions.</span></div><div class="e"><time>08:28</time><span><span class="badge" style="background:#1a4a2f;color:#cfe">COHESION ✓</span> Whole-game smoothing pass #1: hero prominence fixed, scale/color cohered, world & combat wins preserved. 7.0 → 7.3.</span></div><div class="e"><time>08:10</time><span><span class="badge" style="background:#3a2a12;color:#cfe">CRITIC r2</span> Wave 1: world/lighting/combat WIN (~8); overall 4.2 → 7.0.</span></div></div></div>
 
   <div class="foot">GODOT PORT COMPLETE and it beats the three.js build. Forward+ gives real SSAO, volumetric fog, ACES + a filmic LUT and proper glow: the Crystal Depths now has deep blacks, faceted crystals with internal glow and mineral veins snaking the floor. Carl is a rigged glTF barbarian with a 55-piece bone-attached muscle suit; the Juicer is an 8.9m steroid hulk framed head-to-feet by a dedicated boss camera. Full broadcast HUD rebuilt in Godot Control nodes. A cohesion pass fixed VFX blowout and two camera bugs (unused boss offset; framerate-dependent follow that let Carl outrun his own camera at 8fps). · a fresh critic sees ours beside the reference as two unlabeled candidates and picks the better one · loop continues until ours wins</div>
 </div>

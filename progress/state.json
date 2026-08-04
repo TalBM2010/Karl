@@ -1,9 +1,9 @@
 {
-  "updated": "2026-08-04 07:30 UTC",
-  "wave": 6,
+  "updated": "2026-08-04 20:40 UTC",
+  "wave": 7,
   "rounds": 13,
   "overall": 9.3,
-  "engine": "GODOT 4.3 (Forward+) \u2014 ported & cohered",
+  "engine": "GODOT 4.3 (Forward+) \u2014 porting content systems",
   "note": "GODOT PORT COMPLETE and it beats the three.js build. Forward+ gives real SSAO, volumetric fog, ACES + a filmic LUT and proper glow: the Crystal Depths now has deep blacks, faceted crystals with internal glow and mineral veins snaking the floor. Carl is a rigged glTF barbarian with a 55-piece bone-attached muscle suit; the Juicer is an 8.9m steroid hulk framed head-to-feet by a dedicated boss camera. Full broadcast HUD rebuilt in Godot Control nodes. A cohesion pass fixed VFX blowout and two camera bugs (unused boss offset; framerate-dependent follow that let Carl outrun his own camera at 8fps).",
   "latestShots": [
     {
@@ -63,13 +63,31 @@
       "note": "rigged glTF Carl + 55-piece bone-attached muscle suit, beard, heart boxers, cyan axe; crowned Persian Donut; faceted arachnids"
     },
     {
-      "name": "Content systems (loot, ceremony, floors, screens)",
-      "status": "queued",
+      "name": "Godot loot & drops (beams, boxes, gold)",
+      "status": "building",
       "score": 0,
-      "note": "still only in the three.js build \u2014 next to port to Godot"
+      "note": "porting src/loot.js + lootbox.js \u2014 rarity beams, ground labels, gold piles, System loot-box ceremony"
+    },
+    {
+      "name": "Godot floor progression + System intro screens",
+      "status": "building",
+      "score": 0,
+      "note": "porting src/floors.js \u2014 DCC floor order + the System floor-intro announcement overlay"
+    },
+    {
+      "name": "Godot inventory + character sheet",
+      "status": "building",
+      "score": 0,
+      "note": "porting src/screens.js \u2014 Frames C/D: grid inventory, rarity borders, stat columns, lit pedestal"
     }
   ],
   "log": [
+    {
+      "t": "20:40",
+      "tag": "WAVE 7",
+      "c": "#12303f",
+      "msg": "Fresh session: rebuilt the cold toolchain (Godot import pass restored the class cache; warm capture verified rendering). Launched 3 parallel builders porting the last three.js-only systems into Godot \u2014 loot, floors, inventory/character screens \u2014 each in an isolated lab to avoid shader-cache races."
+    },
     {
       "t": "07:30",
       "tag": "GODOT \u2713",
