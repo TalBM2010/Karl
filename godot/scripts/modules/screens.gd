@@ -217,6 +217,12 @@ class Screen extends Control:
 	var _grid: Array = []          # inventory cells
 	var _seeded := false
 
+	# ---- live 3D pedestal stage (Option B: the real rigged Carl in a SubViewport) ----
+	var _vp: SubViewport = null    # off-screen 3D render target; its texture is composited in _pedestal
+	var _rig: Node = null          # a KarlPlayer instance, built + posed idle
+	var _stage_tried := false      # only attempt to build the stage once
+	var _stage_ok := false         # true if the rigged Carl actually built (else fall back to drawn)
+
 	# ---- palette (mirror of the module constants) ----
 	const CYAN := Color(0.224, 0.843, 1.0)
 	const CYAN_M := Color(0.224, 0.843, 1.0, 0.62)
@@ -497,6 +503,102 @@ class Screen extends Control:
 			_slot(r, int(s[1]), int(s[2]), 0, "", str(s[0]))
 			y += cell + gap
 
+	## Build the off-screen 3D stage ONCE: a SubViewport with its own world, a warm key +
+	## cyan rim + cool fill, and a fresh rigged KarlPlayer (muscle suit, heart boxers, cyan
+	## axe) posed idle on the pedestal. If the rig fails to build (missing Xbot.glb, no
+	## skeleton) we leave _stage_ok false and _pedestal falls back to the drawn statue — so a
+	## flaky viewport can never leave the pedestal empty.
+	func _ensure_stage() -> void:
+		if _stage_tried:
+			return
+		_stage_tried = true
+
+		var vp := SubViewport.new()
+		vp.size = Vector2i(420, 720)                      # portrait, matches the pedestal well
+		vp.transparent_bg = true                          # crystals + glow behind show through
+		vp.own_world_3d = true                            # isolated from the gameplay world
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		vp.msaa_3d = Viewport.MSAA_2X                     # soften the silhouette without much cost
+		add_child(vp)
+
+		var stage := Node3D.new()
+		stage.name = "Stage"
+		vp.add_child(stage)
+
+		# --- camera: a slight low hero angle, full body framed with headroom + a little floor
+		var cam := Camera3D.new()
+		cam.fov = 30.0
+		cam.near = 0.05
+		cam.far = 40.0
+		cam.position = Vector3(0.0, 1.28, 5.6)
+		stage.add_child(cam)
+		cam.look_at(Vector3(0.0, 1.16, 0.0), Vector3.UP)
+
+		# --- environment: cool ambient so shadowed muscle never crushes to black; gentle glow
+		# lifts the cyan axe + the red-heart emission the way a lit statue catches light.
+		var env := Environment.new()
+		env.background_mode = Environment.BG_CLEAR_COLOR
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.28, 0.39, 0.52)
+		env.ambient_light_energy = 0.26
+		env.tonemap_mode = Environment.TONE_MAPPER_ACES
+		env.tonemap_exposure = 0.72
+		env.glow_enabled = true
+		env.glow_intensity = 0.55
+		env.glow_bloom = 0.12
+		env.glow_hdr_threshold = 0.95      # low enough that only the emissive axe/hearts bloom
+		cam.environment = env
+
+		# --- key: warm broadcast key from front-upper-right, models the pecs/abs/delts
+		var key := DirectionalLight3D.new()
+		key.light_color = Color(1.0, 0.87, 0.68)
+		key.light_energy = 0.86
+		key.rotation = Vector3(deg_to_rad(-40.0), deg_to_rad(32.0), 0.0)
+		stage.add_child(key)
+		# --- rim: cyan from behind-left-above, carves the heroic edge off the dark well
+		var rim := DirectionalLight3D.new()
+		rim.light_color = Color(0.36, 0.74, 1.0)
+		rim.light_energy = 2.3
+		rim.rotation = Vector3(deg_to_rad(-16.0), deg_to_rad(206.0), 0.0)
+		stage.add_child(rim)
+		# --- fill: cool low fill from front-left keeps the shadow side readable
+		var fill := DirectionalLight3D.new()
+		fill.light_color = Color(0.42, 0.55, 0.70)
+		fill.light_energy = 0.40
+		fill.rotation = Vector3(deg_to_rad(-8.0), deg_to_rad(-48.0), 0.0)
+		stage.add_child(fill)
+		# --- warm up-light from the pedestal itself, catches the underside of the beard/pecs
+		var up := OmniLight3D.new()
+		up.light_color = Color(0.95, 0.66, 0.44)
+		up.light_energy = 0.5
+		up.omni_range = 2.8
+		up.position = Vector3(0.0, 0.2, 0.9)
+		stage.add_child(up)
+
+		# --- the hero
+		var scr: Script = load("res://scripts/player.gd")
+		if scr != null and scr.can_instantiate():
+			var c: Node = scr.new()
+			stage.add_child(c)
+			if c.has_method("build"):
+				c.call("build")
+			# only keep it if the skeleton actually came up
+			if ("skel" in c) and c.get("skel") != null:
+				_rig = c
+				# KarlPlayer.build() calls set_state("idle") while _state is ALREADY "idle",
+				# so its guard no-ops and NO clip ever plays — the rig freezes in the rest
+				# T-pose. Force a real transition (move -> idle) to actually start the idle clip
+				# so he stands relaxed (arms down, subtle breathing) instead of arms-out.
+				if c.has_method("set_state"):
+					c.call("set_state", "move")
+					c.call("set_state", "idle")
+				_vp = vp
+				_stage_ok = true
+			else:
+				c.queue_free()
+		if not _stage_ok:
+			vp.queue_free()
+
 	func _pedestal(rect: Rect2) -> void:
 		# dark well
 		var sb := StyleBoxFlat.new()
@@ -530,8 +632,22 @@ class Screen extends Control:
 			var col: Color = AETHER if (i % 2 == 0) else CYAN
 			if behind:
 				_crystal(Vector2(px, py), 26.0 * scale, col, 0.5)
-		# hero
-		_carl(Vector2(cx, floor_y), rect.size.y * 0.62)
+		# hero — the real rigged Carl in a live 3D viewport (falls back to the drawn statue)
+		_ensure_stage()
+		if _stage_ok and _vp != null and _rig != null:
+			# gentle absolute-time yaw sway around a front-3/4 pose, so EVERY captured frame
+			# reads as a heroic front-facing statue (never his back). Framerate-independent.
+			if "rotation" in _rig:
+				var base_yaw: float = 0.0    # faces the pedestal camera (rig front is +Z)
+				var yaw: float = base_yaw + sin(t * 0.45) * 0.42
+				_rig.set("rotation", Vector3(0.0, yaw, 0.0))
+			var vh: float = rect.size.y * 1.02
+			var vw: float = vh * (420.0 / 720.0)
+			# frame so the rig's feet sit on the pedestal discs (floor_y region)
+			var vr := Rect2(cx - vw * 0.5, floor_y + 40.0 - vh, vw, vh)
+			draw_texture_rect(_vp.get_texture(), vr, false)
+		else:
+			_carl(Vector2(cx, floor_y), rect.size.y * 0.62)
 		# front crystals
 		for i in cn:
 			var a2: float = t * 0.6 + TAU * float(i) / float(cn)
