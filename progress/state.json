@@ -1,18 +1,18 @@
 {
-  "updated": "2026-08-04 22:05 UTC",
+  "updated": "2026-08-04 22:15 UTC",
   "wave": 7,
-  "rounds": 14,
-  "overall": 9.4,
-  "engine": "GODOT 4.3 (Forward+) \u2014 content systems ported & cohered",
-  "note": "Wave 7 + pedestal round: content systems ported & cohered; the inventory pedestal hero is now the REAL rigged 3D Carl (muscle suit, beard, cyan axe) rendered live in a SubViewport, replacing the grey mannequin. Honest remaining gap on the hero: the heart-print boxers blow out to near-white and the axe glow is modest under software Vulkan \u2014 both are player.gd MATERIAL issues (they'd lift the in-game Carl too), which is the next piece.",
+  "rounds": 15,
+  "overall": 9.5,
+  "engine": "GODOT 4.3 (Forward+) \u2014 content systems ported, cohered & hero-polished",
+  "note": "Wave 7 complete + 2 refinement rounds. All three three.js-only systems (loot, floors, inventory/character) are ported into Godot and cohered. The inventory pedestal is the real rigged 3D Carl; and a player.gd material pass fixed the two signature-hero flaws GAME-WIDE \u2014 the heart-print boxers now read as bold red hearts (root cause: emission_operator defaulting to ADD flooded the short white) and the cyan axe genuinely glows without clipping. Verified in both the pedestal close-up and a gameplay composite: no regression to the in-game Carl.",
   "latestShots": [
     {
       "path": "captures/web/_composite_hero.jpg",
-      "cap": "COHERED \u2014 gameplay + full HUD + loot: 'Bronze Loot Box', 'Crystal Render / Legendary Battleaxe', '7,148 Gold', '12,923 BLOCKED' over deep-black crystals"
+      "cap": "COHERED \u2014 in-game Carl now carries the red hearts + cyan axe at gameplay distance; loot + full HUD intact, nothing blown out"
     },
     {
       "path": "captures/web/_inventory.jpg",
-      "cap": "UPGRADED \u2014 inventory pedestal is now the real rigged 3D Carl (muscled, bearded, cyan axe) not a mannequin; honest gap: heart-boxers wash out to white"
+      "cap": "HERO FIXED \u2014 inventory pedestal: real rigged 3D Carl with bold red heart-print boxers (were washed white) and a glowing cyan axe (Frame C)"
     },
     {
       "path": "captures/web/_charsheet.jpg",
@@ -59,8 +59,8 @@
     {
       "name": "Godot characters \u2014 Carl / Donut / arachnids",
       "status": "winning",
-      "score": 8.5,
-      "note": "rigged glTF Carl + 55-piece bone-attached muscle suit, beard, heart boxers, cyan axe; crowned Persian Donut; faceted arachnids"
+      "score": 8.8,
+      "note": "rigged glTF Carl + muscle suit, beard, cyan axe, crowned Donut, faceted arachnids \u2014 heart-print boxers now legible (was an ADD-emission wash) and the axe genuinely glows"
     },
     {
       "name": "Godot loot & drops (beams, boxes, gold)",
@@ -77,12 +77,17 @@
     {
       "name": "Godot inventory + character sheet",
       "status": "winning",
-      "score": 9.0,
-      "note": "Frames C/D: clean opaque menus; the pedestal hero is now the real rigged 3D Carl in a live SubViewport (was a grey mannequin)",
-      "gap": "the heart-print boxers blow out to near-white and the cyan axe glow is modest \u2014 a player.gd material pass (higher-contrast heart print + stronger axe emission) is the next fix, and it lifts the in-game Carl too"
+      "score": 9.2,
+      "note": "Frames C/D: clean opaque menus; pedestal is the real rigged 3D Carl with legible red heart-boxers + glowing axe"
     }
   ],
   "log": [
+    {
+      "t": "22:15",
+      "tag": "HERO \u2713",
+      "c": "#1a4a2f",
+      "msg": "Closed the named hero gap game-wide (player.gd). The heart-print boxers washing to white was the classic emission_operator=ADD trap flooding the whole short with base colour \u2014 set EMISSION_OP_MULTIPLY to confine emission to the heart mask, darkened the base albedo for contrast, saturated the heart red below the bloom threshold; hearts now read as bold red hearts close-up AND register in combat. The axe emission was raised above the glow threshold (blue peak 1.5, red pinned to 0 so it can only smear cyan, never white) so it genuinely blooms. Verified in BOTH the inventory close-up and a gameplay composite \u2014 no regression to the in-game Carl. Boxers 9/10, axe 8/10. Overall 9.4 -> 9.5."
+    },
     {
       "t": "22:05",
       "tag": "PEDESTAL \u2713",
