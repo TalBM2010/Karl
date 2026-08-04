@@ -1,26 +1,26 @@
 {
-  "updated": "2026-08-04 20:40 UTC",
+  "updated": "2026-08-04 21:10 UTC",
   "wave": 7,
   "rounds": 13,
   "overall": 9.3,
   "engine": "GODOT 4.3 (Forward+) \u2014 porting content systems",
-  "note": "GODOT PORT COMPLETE and it beats the three.js build. Forward+ gives real SSAO, volumetric fog, ACES + a filmic LUT and proper glow: the Crystal Depths now has deep blacks, faceted crystals with internal glow and mineral veins snaking the floor. Carl is a rigged glTF barbarian with a 55-piece bone-attached muscle suit; the Juicer is an 8.9m steroid hulk framed head-to-feet by a dedicated boss camera. Full broadcast HUD rebuilt in Godot Control nodes. A cohesion pass fixed VFX blowout and two camera bugs (unused boss offset; framerate-dependent follow that let Carl outrun his own camera at 8fps).",
+  "note": "Wave 7: the three three.js-only systems are now ported into Godot \u2014 loot/drops, the System floor-intro, and the inventory+character screens. Loot and floors compose cleanly; the inventory/character overlays are strong in isolation but a composite pass caught them bleeding the HUD through a too-translucent backdrop, now being fixed by a whole-game cohesion agent.",
   "latestShots": [
     {
-      "path": "captures/web/shot_04.jpg",
-      "cap": "GODOT \u2014 the Juicer framed head-to-feet, 294,890 CRITICAL! (Frame A)"
+      "path": "captures/web/_loot_box.jpg",
+      "cap": "NEW \u2014 loot: 'Gold Loot Box / SYSTEM \u00b7 SEALED' ceremony + a legendary drop + gold pile (rubric 12 / Frame B)"
     },
     {
-      "path": "captures/web/shot_02.jpg",
-      "cap": "GODOT \u2014 Carl + Donut + arachnids in the cavern, restrained VFX"
+      "path": "captures/web/_floors_intro.jpg",
+      "cap": "NEW \u2014 the System floor-intro: FLOOR 1 / THE CRAWL, a broadcast interruption over the live HUD"
     },
     {
-      "path": "captures/web/shot_01.jpg",
-      "cap": "GODOT \u2014 world + HUD composite"
+      "path": "captures/web/_inventory.jpg",
+      "cap": "NEW \u2014 inventory (Frame C): tabs, lit pedestal, rarity grid, equipped stats, currency"
     },
     {
-      "path": "captures/web/strip_00.jpg",
-      "cap": "For comparison: the previous three.js build"
+      "path": "captures/web/_charsheet.jpg",
+      "cap": "NEW \u2014 character sheet (Frame D): attribute strip + OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
     }
   ],
   "strip": [
@@ -64,24 +64,31 @@
     },
     {
       "name": "Godot loot & drops (beams, boxes, gold)",
-      "status": "building",
-      "score": 0,
-      "note": "porting src/loot.js + lootbox.js \u2014 rarity beams, ground labels, gold piles, System loot-box ceremony"
+      "status": "winning",
+      "score": 8.0,
+      "note": "rarity light-shaft drops, crisp fixed-size ground labels, gold piles + beams, the System loot-box hover/burst ceremony \u2014 reads as a Diablo-IV loot moment in the cavern"
     },
     {
       "name": "Godot floor progression + System intro screens",
-      "status": "building",
-      "score": 0,
-      "note": "porting src/floors.js \u2014 DCC floor order + the System floor-intro announcement overlay"
+      "status": "winning",
+      "score": 8.0,
+      "note": "'THE SYSTEM // DUNGEON BROADCAST' floor-intro overlay in the broadcast language; book order Floor 1 THE CRAWL -> 2 THE BRAMBLE -> 3 THE IRON TANGLE, HUD objectives retitle in sync"
     },
     {
       "name": "Godot inventory + character sheet",
-      "status": "building",
-      "score": 0,
-      "note": "porting src/screens.js \u2014 Frames C/D: grid inventory, rarity borders, stat columns, lit pedestal"
+      "status": "critic",
+      "score": 8.0,
+      "note": "Frames C/D built and strong in isolation \u2014 tabbed inventory, rarity-bordered grid, lit pedestal, full OFFENSE/DEFENSE/UTILITY columns, paragon + play-time",
+      "gap": "composite bleed-through: the translucent screen backdrop lets the live HUD + damage numbers + loot labels show through \u2014 a fresh cohesion agent is making it a clean opaque full-screen menu"
     }
   ],
   "log": [
+    {
+      "t": "21:10",
+      "tag": "COMPOSITE",
+      "c": "#3a2a12",
+      "msg": "All three content builders landed (loot, floors, inventory/character). Ran the full composite \u2014 loot beams/box/gold and the System floor-intro compose cleanly, but the inventory + character-sheet backdrops are too translucent, so the live HUD, damage numbers and loot labels bleed through (exactly the composite-only regression that isolated labs can't catch). Dispatched a fresh whole-game cohesion agent to make the screens clean opaque menus and sweep for anything else."
+    },
     {
       "t": "20:40",
       "tag": "WAVE 7",
