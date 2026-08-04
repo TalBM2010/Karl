@@ -18,7 +18,7 @@ class_name KarlWorld
 
 const GROUND_SIZE := 240.0
 const WALL_RADIUS := 29.0          # far rock ring — sits just past the top edge of frame
-const MAX_CRYSTAL_LIGHTS := 16      # software Vulkan: pay for a few good lights, not many bad ones
+const MAX_CRYSTAL_LIGHTS := 18      # software Vulkan: pay for a few good lights, not many bad ones
 const HERO_RING := 7.0             # game.gd patrols Carl on this circle — keep it clear
 
 var crystals: Array[Node3D] = []
@@ -53,7 +53,7 @@ func _build_environment() -> void:
 	# point of the look, and it is what buys back the deep blacks.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.09, 0.23, 0.32)
-	env.ambient_light_energy = 0.32
+	env.ambient_light_energy = 0.38
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 0.92
@@ -78,13 +78,9 @@ func _build_environment() -> void:
 	env.set_glow_level(3, 0.55)
 	env.set_glow_level(4, 0.18)
 
-	# Wet-stone reflections: the floor picking up crystal glow is most of what makes a D4 cavern
-	# look wet rather than dusty. Kept to few steps — this is a software rasteriser.
-	env.ssr_enabled = true
-	env.ssr_max_steps = 24
-	env.ssr_fade_in = 0.4
-	env.ssr_fade_out = 6.0
-	env.ssr_depth_tolerance = 0.3
+	# (SSR was measured here and cut: ~5s per capture run for no visible gain, because the floor
+	# is too rough to return a coherent reflection. The wet look comes from the roughness map
+	# below instead — glossy patches that throw long specular streaks from the crystal omnis.)
 
 	# Contact darkening — crevices, the seam where rock meets floor, under the hero.
 	env.ssao_enabled = true
@@ -95,16 +91,19 @@ func _build_environment() -> void:
 	env.ssao_light_affect = 0.15
 	env.ssao_ao_channel_affect = 0.0
 
+	# (SSIL was measured here and cut: +5s per capture run, no read on screen at this light
+	# level, and it banded on the large flat rock faces. SSAO alone carries the contact darkening.)
+
 	# Depth fog. Low energy + dark colour: it must separate layers, never milk the frame.
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 	env.fog_light_color = fog_color
 	env.fog_light_energy = 0.40
-	env.fog_density = 0.022
+	env.fog_density = 0.019
 	env.fog_aerial_perspective = 0.0
 	env.fog_sky_affect = 0.0
-	env.fog_height = 6.0
-	env.fog_height_density = 0.030
+	env.fog_height = 3.2
+	env.fog_height_density = 0.075
 
 	# Volumetric haze — ONLY so the crystal omnis throw visible shafts. Every directional light
 	# has its volumetric contribution zeroed below: a wide directional scattering into this
@@ -122,7 +121,7 @@ func _build_environment() -> void:
 	env.volumetric_fog_ambient_inject = 0.0
 
 	env.adjustment_enabled = true
-	env.adjustment_contrast = 1.10
+	env.adjustment_contrast = 1.12
 	env.adjustment_saturation = 1.06
 	env.adjustment_brightness = 1.0
 	env.adjustment_color_correction = _grade_lut()
@@ -156,7 +155,7 @@ func _build_vignette() -> void:
 	sh.code = """
 shader_type canvas_item;
 render_mode blend_mix, unshaded;
-uniform float amount = 0.50;
+uniform float amount = 0.55;
 uniform float inner = 0.30;
 uniform float outer = 0.86;
 void fragment() {
@@ -193,8 +192,8 @@ func _build_lights() -> void:
 	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	key.directional_shadow_max_distance = 30.0   # tight = sharp shadows over the visible disc
 	key.shadow_blur = 1.6
-	key.shadow_bias = 0.04
-	key.shadow_normal_bias = 1.2
+	key.shadow_bias = 0.11
+	key.shadow_normal_bias = 4.5
 	key.light_volumetric_fog_energy = 0.0   # see the volumetric note above — non-negotiable
 	key.rotation_degrees = Vector3(-58, 34, 0)
 	add_child(key)
@@ -241,7 +240,7 @@ func _build_ground() -> void:
 
 	# Second noise drives roughness -> wet patches and dry patches instead of one plastic sheen.
 	mat.roughness = 1.0
-	mat.roughness_texture = _noise_tex(0.032, 3, _ramp([0.0, 1.0], [Color(0.45, 0.45, 0.45), Color(0.92, 0.92, 0.92)]))
+	mat.roughness_texture = _noise_tex(0.032, 3, _ramp([0.0, 1.0], [Color(0.26, 0.26, 0.26), Color(0.88, 0.88, 0.88)]))
 	mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
 	mat.metallic = 0.16
 	mat.metallic_specular = 0.55
@@ -274,6 +273,17 @@ func _build_ground() -> void:
 	body.add_child(col)
 	body.collision_layer = 2
 	add_child(body)
+
+## Soft round speck for the dust motes — a bare quad reads as a hard square at any size.
+func _dot_texture() -> ImageTexture:
+	var n := 32
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			var d := Vector2(float(x) - (n - 1) * 0.5, float(y) - (n - 1) * 0.5).length() / (n * 0.5)
+			var a := clampf(pow(1.0 - clampf(d, 0.0, 1.0), 2.2), 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	return ImageTexture.create_from_image(img)
 
 ## Emission mask for gems: columns = facets (each with its own brightness and a soft internal
 ## streak), rows = height (molten at the base, near-clear at the tip). Shared by every crystal.
@@ -572,11 +582,11 @@ func _build_crystals() -> void:
 		# hero spires — the tall landmark formations, all of them lit
 		{"n": 7, "min_r": 9.0, "max_r": 18.0, "h": [7.0, 12.5], "r": [0.55, 1.0], "cnt": [5, 8], "hues": [blue, violet], "light": 30.0, "lights": 5, "e": [2.1, 2.7]},
 		# mid field
-		{"n": 24, "min_r": 6.0, "max_r": 21.0, "h": [2.6, 5.6], "r": [0.28, 0.55], "cnt": [4, 7], "hues": [azure, blue, azure, blue, violet], "light": 17.0, "lights": 5, "e": [1.9, 2.4]},
+		{"n": 24, "min_r": 6.0, "max_r": 21.0, "h": [2.6, 5.6], "r": [0.28, 0.55], "cnt": [4, 7], "hues": [azure, blue, azure, blue, violet], "light": 17.0, "lights": 6, "e": [2.1, 2.6]},
 		# near shards — small, dense, foreground
-		{"n": 30, "min_r": 3.0, "max_r": 16.0, "h": [1.1, 2.8], "r": [0.16, 0.34], "cnt": [4, 8], "hues": [azure, blue, azure, blue, blue, magenta], "light": 6.5, "lights": 3, "e": [1.6, 2.1]},
+		{"n": 30, "min_r": 3.0, "max_r": 16.0, "h": [1.1, 2.8], "r": [0.16, 0.34], "cnt": [4, 8], "hues": [azure, blue, azure, blue, blue, magenta], "light": 6.5, "lights": 3, "e": [2.0, 2.6]},
 		# far rim — big silhouettes glowing against the cavern wall
-		{"n": 9, "min_r": 22.0, "max_r": 30.0, "h": [5.0, 10.0], "r": [0.42, 0.85], "cnt": [4, 7], "hues": [blue, violet, blue, violet, magenta], "light": 22.0, "lights": 4, "e": [2.2, 2.8]},
+		{"n": 8, "min_r": 22.0, "max_r": 30.0, "h": [5.0, 10.0], "r": [0.42, 0.85], "cnt": [4, 7], "hues": [blue, violet, blue, violet, magenta], "light": 22.0, "lights": 4, "e": [2.2, 2.8]},
 	]
 
 	for layer in layers:
@@ -665,7 +675,7 @@ func _crystal_cluster(layer: Dictionary, hue: Color) -> Node3D:
 func _build_motes() -> void:
 	var p := CPUParticles3D.new()
 	p.name = "Motes"
-	p.amount = 130
+	p.amount = 180
 	p.lifetime = 11.0
 	p.preprocess = 8.0
 	p.randomness = 0.8
@@ -677,24 +687,28 @@ func _build_motes() -> void:
 	p.gravity = Vector3(0, 0.02, 0)
 	p.initial_velocity_min = 0.06
 	p.initial_velocity_max = 0.35
-	p.scale_amount_min = 0.5
-	p.scale_amount_max = 1.6
-	p.color = Color(0.55, 0.82, 1.0, 0.55)
+	p.scale_amount_min = 0.4
+	p.scale_amount_max = 1.3
+	p.color = Color(0.55, 0.82, 1.0, 0.5)
 
 	var q := QuadMesh.new()
-	q.size = Vector2(0.045, 0.045)
-	p.mesh = q
+	q.size = Vector2(0.05, 0.05)
 
+	# The material lives on the MESH, and its albedo alpha must be low: with an opaque albedo
+	# these draw as flat grey squares instead of additive specks, whatever the particle colour.
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true
 	m.vertex_color_use_as_albedo = true
-	m.albedo_color = Color(0.60, 0.85, 1.0)
+	m.albedo_color = Color(0.55, 0.80, 1.0, 0.30)
+	m.albedo_texture = _dot_texture()   # without a soft falloff these read as hard grey squares
 	m.disable_receive_shadows = true
-	m.shadow_to_opacity = false
-	p.material_override = m
+	m.no_depth_test = false
+	q.material = m
+	p.mesh = q
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(p)
 
