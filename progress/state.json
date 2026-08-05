@@ -1,26 +1,26 @@
 {
-  "updated": "2026-08-04 22:20 UTC",
+  "updated": "2026-08-05 09:40 UTC",
   "wave": 8,
   "rounds": 15,
   "overall": 9.5,
-  "engine": "GODOT 4.3 (Forward+) \u2014 pushing to the bar (env / enemies / combat)",
-  "note": "Wave 7 complete + 2 refinement rounds. All three three.js-only systems (loot, floors, inventory/character) are ported into Godot and cohered. The inventory pedestal is the real rigged 3D Carl; and a player.gd material pass fixed the two signature-hero flaws GAME-WIDE \u2014 the heart-print boxers now read as bold red hearts (root cause: emission_operator defaulting to ADD flooded the short white) and the cyan axe genuinely glows without clipping. Verified in both the pedestal close-up and a gameplay composite: no regression to the in-game Carl.",
+  "engine": "GODOT 4.3 (Forward+) \u2014 Wave 8 landed, cohering",
+  "note": "Wave 8 pushed the gameplay pieces: the Crystal Depths FLOOR went from a flat plane to cracked, cobbled, mineral-veined cavern rock with grounded debris + contact shadows; the arachnids read as distinct menacing crystal spiders with wind-ups/flinch; and the Juicer now reads as a legibly MUSCLED red hulk instead of a dark slab. Composite-verified clean. A whole-game cohesion agent is now fixing a damage-number overlap and balancing the (busier) frame.",
   "latestShots": [
     {
-      "path": "captures/web/_composite_hero.jpg",
-      "cap": "COHERED \u2014 in-game Carl now carries the red hearts + cyan axe at gameplay distance; loot + full HUD intact, nothing blown out"
+      "path": "captures/web/_w8_boss.jpg",
+      "cap": "WAVE 8 \u2014 the Juicer now reads as a muscled red hulk (was a dark slab); deeper mineral-veined floor; 294,890 CRITICAL!"
+    },
+    {
+      "path": "captures/web/_w8_floor.jpg",
+      "cap": "WAVE 8 \u2014 cracked/veined floor with grounded debris + distinct crystal-spider arachnids; loot box + Donut alongside"
     },
     {
       "path": "captures/web/_inventory.jpg",
-      "cap": "HERO FIXED \u2014 inventory pedestal: real rigged 3D Carl with bold red heart-print boxers (were washed white) and a glowing cyan axe (Frame C)"
+      "cap": "inventory (Frame C): real rigged 3D Carl, bold red heart-boxers, glowing cyan axe"
     },
     {
       "path": "captures/web/_charsheet.jpg",
-      "cap": "character sheet (Frame D): attribute strip + OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
-    },
-    {
-      "path": "captures/web/_floors_intro.jpg",
-      "cap": "the System floor-intro: FLOOR 1 / THE CRAWL, a broadcast interruption over the live HUD"
+      "cap": "character sheet (Frame D): OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
     }
   ],
   "strip": [
@@ -34,9 +34,9 @@
   "pieces": [
     {
       "name": "Godot world \u2014 Crystal Depths (Forward+)",
-      "status": "building",
+      "status": "winning",
       "score": 9.0,
-      "note": "deep blacks, faceted crystals w/ internal glow, mineral veins, SSAO + volumetric fog + ACES/LUT grade"
+      "note": "deep blacks, faceted crystals w/ internal glow + a rebuilt cracked/cobbled mineral-veined FLOOR (baked from one cellular crack heightfield) with grounded debris + contact shadows; SSAO + fog + ACES/LUT"
     },
     {
       "name": "Godot broadcast HUD",
@@ -46,21 +46,21 @@
     },
     {
       "name": "Godot boss \u2014 the Juicer",
-      "status": "building",
-      "score": 8.8,
-      "note": "8.9m hulk, whey jug, syringes, telegraph->slam, dedicated boss camera frames him fully"
+      "status": "winning",
+      "score": 9.0,
+      "note": "8.9m hulk now reads as legibly MUSCLED (dedicated key/fill/rim) not a dark slab; whey jug, syringes, telegraph->slam, dedicated boss camera"
     },
     {
       "name": "Godot combat VFX & damage numbers",
       "status": "building",
       "score": 8.6,
-      "note": "GPU particles, molten-orange crits w/ heavy outline; cohesion pass added a big-effect arbiter so they punctuate rather than blow out"
+      "note": "dust + swing arcs + hit flash added for weight; cohesion is fixing a case where two big numbers (PHYSICAL + CRITICAL) overlapped"
     },
     {
       "name": "Godot characters \u2014 Carl / Donut / arachnids",
       "status": "winning",
-      "score": 8.8,
-      "note": "rigged glTF Carl + muscle suit, beard, cyan axe, crowned Donut, faceted arachnids \u2014 heart-print boxers now legible (was an ADD-emission wash) and the axe genuinely glows"
+      "score": 8.9,
+      "note": "Carl w/ legible heart-boxers + glowing axe; crowned Donut; arachnids now sharp menacing crystal spiders with wind-ups, flinch/knockback + death dissolve + contact shadows"
     },
     {
       "name": "Godot loot & drops (beams, boxes, gold)",
@@ -82,6 +82,12 @@
     }
   ],
   "log": [
+    {
+      "t": "09:40",
+      "tag": "WAVE 8 \u2713",
+      "c": "#1a4a2f",
+      "msg": "Three parallel builders landed (env/enemies/combat), composite-verified clean. Floor rebuilt into cracked mineral-veined rock + grounded debris (ground depth ~5.5->8); arachnids now distinct menacing crystal spiders w/ telegraphs+flinch+dissolve (~7); the Juicer reads as a muscled hulk not a dark slab (~8). Caught a parallel-collision scare (a builder briefly wrote a wrong FastNoiseLite enum to the repo, since corrected) and a damage-number overlap \u2014 sent the overlap + frame-balance to a whole-game cohesion agent."
+    },
     {
       "t": "22:20",
       "tag": "WAVE 8",
