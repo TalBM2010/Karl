@@ -1,9 +1,9 @@
 {
-  "updated": "2026-08-04 22:15 UTC",
-  "wave": 7,
+  "updated": "2026-08-04 22:20 UTC",
+  "wave": 8,
   "rounds": 15,
   "overall": 9.5,
-  "engine": "GODOT 4.3 (Forward+) \u2014 content systems ported, cohered & hero-polished",
+  "engine": "GODOT 4.3 (Forward+) \u2014 pushing to the bar (env / enemies / combat)",
   "note": "Wave 7 complete + 2 refinement rounds. All three three.js-only systems (loot, floors, inventory/character) are ported into Godot and cohered. The inventory pedestal is the real rigged 3D Carl; and a player.gd material pass fixed the two signature-hero flaws GAME-WIDE \u2014 the heart-print boxers now read as bold red hearts (root cause: emission_operator defaulting to ADD flooded the short white) and the cyan axe genuinely glows without clipping. Verified in both the pedestal close-up and a gameplay composite: no regression to the in-game Carl.",
   "latestShots": [
     {
@@ -34,7 +34,7 @@
   "pieces": [
     {
       "name": "Godot world \u2014 Crystal Depths (Forward+)",
-      "status": "winning",
+      "status": "building",
       "score": 9.0,
       "note": "deep blacks, faceted crystals w/ internal glow, mineral veins, SSAO + volumetric fog + ACES/LUT grade"
     },
@@ -46,13 +46,13 @@
     },
     {
       "name": "Godot boss \u2014 the Juicer",
-      "status": "winning",
+      "status": "building",
       "score": 8.8,
       "note": "8.9m hulk, whey jug, syringes, telegraph->slam, dedicated boss camera frames him fully"
     },
     {
       "name": "Godot combat VFX & damage numbers",
-      "status": "winning",
+      "status": "building",
       "score": 8.6,
       "note": "GPU particles, molten-orange crits w/ heavy outline; cohesion pass added a big-effect arbiter so they punctuate rather than blow out"
     },
@@ -82,6 +82,12 @@
     }
   ],
   "log": [
+    {
+      "t": "22:20",
+      "tag": "WAVE 8",
+      "c": "#12303f",
+      "msg": "User: keep looping until very close to target. Fanned out 3 parallel builders on the highest-value IN-CONTAINER gaps \u2014 ground & environment depth (normal-mapped floor relief + grounded debris + fog recession), enemy/boss legibility (menacing arachnid silhouettes + telegraphs; Juicer fill so he reads as a hulk not a slab), and combat impact (dust, swing arcs, hit flash within the no-white-clip budget). Each in an isolated lab; composite + cohesion to follow. (The bigger leaps \u2014 bespoke characters, real-fps motion, audio \u2014 remain gated on a GPU/egress environment.)"
+    },
     {
       "t": "22:15",
       "tag": "HERO \u2713",
