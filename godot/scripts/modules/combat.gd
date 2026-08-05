@@ -51,6 +51,9 @@ const COL_DUST := Color(0.46, 0.40, 0.33)
 
 const TEXT_LIFE := 1.15
 const MAX_TEXT := 3
+# The largest pixel_size any number uses (a crit). Vertical lane spacing is sized off THIS so a
+# lane always clears whatever number lands in it, crit or not — see spawn_damage's layout block.
+const PS_MAX := 0.00039
 
 var game: Node = null
 var cam: Camera3D = null
@@ -294,35 +297,54 @@ func spawn_damage(pos: Vector3, amount: int, type: int) -> void:
 	sub.outline_modulate = Color(0, 0, 0, 1)
 	sub.visible = true
 
-	# De-clutter: successive pops are pushed along the CAMERA-RIGHT axis in rotating slots,
-	# so consecutive numbers separate on screen instead of stacking on each other.
-	# A fixed_size Label3D behaves as if it sat one unit from the camera, so its apparent
-	# WORLD size is (pixel_size * font_size * distance). Every layout offset below is
-	# therefore scaled by that same distance — screen spacing then stays constant no matter
-	# how tight or wide the camera happens to be framed.
+	# ANTI-OVERLAP LAYOUT. On the boss cam every blow lands on the boss at screen-centre, so two
+	# numbers spawned within a life of each other pile onto the same point — the old horizontal
+	# "slots" nudged them only ~one line-height apart, far less than a 7-digit crit is WIDE
+	# (~250px), so a white PHYSICAL and an orange CRITICAL rendered stacked and unreadable.
+	# Fix: give every number its own VERTICAL LANE. Lanes are pitched by a full crit line-height
+	# so two numbers can never share a row whatever their glyph width; a gentle per-lane
+	# horizontal fan keeps the column from reading as rigid. A fixed_size Label3D behaves as if it
+	# sat one unit from the camera, so its apparent WORLD size is (pixel_size * font_size *
+	# distance) — every offset below is scaled by that distance, so on-screen spacing is constant
+	# no matter how tight or wide the boss cam happens to frame.
 	var dist := 12.0
 	if cam:
 		dist = maxf(2.0, cam.global_position.distance_to(pos))
-	var unit: float = 128.0 * ps * dist          # one line-height of the main label, in world units
-
-	_text_seq += 1
-	var slot: int = _text_seq % 4
 	var right := Vector3.RIGHT
 	if cam:
 		right = cam.global_transform.basis.x
+	var lane_h: float = 128.0 * PS_MAX * dist     # one crit line-height, in world units
+
+	# Claim the lowest vertical lane not currently held by a live number. MAX_TEXT lanes always
+	# suffice because we retire the oldest before exceeding MAX_TEXT.
+	var occupied: Dictionary = {}
+	for e0 in _texts:
+		occupied[int(e0.get("lane", 0))] = true
+	var lane: int = 0
+	while occupied.has(lane) and lane < MAX_TEXT:
+		lane += 1
+
+	_text_seq += 1
+	# small horizontal fan: 0, +, -, ... centred on the target so numbers still read as "its" hit
+	var fan_dir: float = 0.0 if lane == 0 else (1.0 if lane % 2 == 1 else -1.0)
 	holder.visible = true
-	holder.position = pos + right * ((float(slot) - 1.5) * unit * 1.75 + _rng.randf_range(-0.2, 0.2)) \
-		+ Vector3(0, 2.1 + unit * 1.15 * float(slot % 2) + _rng.randf_range(-0.15, 0.3), 0)
+	holder.position = pos \
+		+ right * (fan_dir * lane_h * 0.85 + _rng.randf_range(-0.10, 0.10) * lane_h) \
+		+ Vector3(0, 2.1 + lane_h * 2.55 * float(lane) + _rng.randf_range(-0.05, 0.05), 0)
 	holder.scale = Vector3(0.25, 0.25, 0.25)
 
-	var vx := _rng.randf_range(-0.7, 0.7)
-	var vz := _rng.randf_range(-0.5, 0.5)
+	# Gentle rise. Numbers already start high (2.1) and the lanes are pitched 2.55 crit-lines
+	# apart, so the drift must stay well under that pitch over a life or a fresh high-lane number
+	# would sink into an older low-lane one — kept modest and gravity-tailed for a soft settle.
+	var vx: float = _rng.randf_range(-0.35, 0.35)
+	var vz: float = _rng.randf_range(-0.25, 0.25)
 	_texts.append({
 		"n": holder, "m": main, "s": sub, "t": 0.0,
 		"d": TEXT_LIFE * (1.18 if type == DmgType.CRIT else 1.0),
 		"p0": holder.position,
-		"v": Vector3(vx, 2.30 if type == DmgType.CRIT else 2.00, vz),
+		"v": Vector3(vx, 1.55 if type == DmgType.CRIT else 1.35, vz),
 		"col": col, "scol": sub_col,
+		"lane": lane,
 		"gap": 128.0 * ps * 0.95,   # sub-label drop, per unit of camera distance
 	})
 
@@ -543,7 +565,7 @@ func swing_arc(pos: Vector3, facing: float) -> void:
 	mi.visible = true
 	var mat: StandardMaterial3D = mi.material_override
 	mat.albedo_color = Color(SWING_COL.r, SWING_COL.g, SWING_COL.b, 0.0)
-	_live.append({"n": mi, "t": 0.0, "d": 0.42, "k": "swing", "kind": "swing", "face": facing})
+	_live.append({"n": mi, "t": 0.0, "d": 0.50, "k": "swing", "kind": "swing", "face": facing})
 
 
 ## A one-shot burst of ground dust. `scale` drives how far and how much is kicked up — a light
@@ -683,7 +705,7 @@ func _update_effects(dt: float) -> void:
 				var sc: float = 0.80 + 0.32 * pow(k, 0.6)
 				n.scale = Vector3(sc, 1.0, sc)
 				var sa: float = sin(clamp(k, 0.0, 1.0) * PI)
-				sa = pow(sa, 0.55) * 0.58
+				sa = pow(sa, 0.50) * 0.66
 				var sm: StandardMaterial3D = (n as MeshInstance3D).material_override
 				sm.albedo_color = Color(SWING_COL.r, SWING_COL.g, SWING_COL.b, sa)
 			"streak":

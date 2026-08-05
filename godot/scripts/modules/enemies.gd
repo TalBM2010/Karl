@@ -107,14 +107,17 @@ func _materials() -> void:
 	m_core.albedo_color = Color(0.55, 0.25, 1.0)
 	m_core.emission_enabled = true
 	m_core.emission = Color(0.62, 0.20, 1.0)
-	m_core.emission_energy_multiplier = 2.4
+	# Five arachnids each carry a core; at 2.4 unshaded they bloomed into five extra violet light
+	# sources that fought the crystal field for the frame. Pulled back so the core still reads as
+	# a hot menacing heart but stops washing the composite past the crystals.
+	m_core.emission_energy_multiplier = 1.85
 	m_core.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	m_eye = StandardMaterial3D.new()
 	m_eye.albedo_color = Color(1.0, 0.55, 0.95)
 	m_eye.emission_enabled = true
 	m_eye.emission = Color(1.0, 0.42, 0.95)
-	m_eye.emission_energy_multiplier = 2.6
+	m_eye.emission_energy_multiplier = 2.1
 	m_eye.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	m_flesh = StandardMaterial3D.new()
