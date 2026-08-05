@@ -24,6 +24,10 @@ extends Node
 ##   - Every eased motion uses exponential decay on delta (`1 - pow(k, dt)`), never a raw
 ##     per-frame weight — captures render at ~2-8 fps and a raw weight would crawl.
 
+# Shared screen-space text arbiter (see text_arbiter.gd) — loot labels are mid-priority: they yield
+# to damage numbers but sit above nameplates. Guarded lazy-create so loot never depends on combat.
+const TextArbiter := preload("res://scripts/modules/text_arbiter.gd")
+
 # ---------------------------------------------------------------------------- rarity tables
 # Display colors (labels) are LDR so text stays crisp; beam colors are HDR, pushed just past the
 # white point on the dominant channel so they bloom while KEEPING their hue (a pure-white push
@@ -92,6 +96,31 @@ func setup(g) -> void:
 		g.enemy_killed.connect(_on_enemy_killed)
 
 	_demo = bool(g.is_capture) if "is_capture" in g else false
+
+	_ensure_arbiter()
+
+
+func _ensure_arbiter() -> Node:
+	if game == null or not ("modules" in game):
+		return null
+	var a = game.modules.get("text_arbiter", null)
+	if a != null and is_instance_valid(a):
+		return a
+	a = TextArbiter.new()
+	a.name = "TextArbiter"
+	game.add_child(a)
+	if a.has_method("setup"):
+		a.setup(game)
+	game.modules["text_arbiter"] = a
+	return a
+
+
+func _arbiter() -> Node:
+	if game and "modules" in game:
+		var a = game.modules.get("text_arbiter", null)
+		if a != null and is_instance_valid(a):
+			return a
+	return null
 
 
 func _hero() -> Vector3:
@@ -255,7 +284,7 @@ func spawn_drop(world_pos: Vector3, rar: Dictionary, force_type: String) -> void
 
 	_drops.append({
 		"kind": "drop", "holder": holder, "beam": beam, "item": item, "label": label,
-		"rar": item_rar, "type": type, "base_y": item_base_y,
+		"rar": item_rar, "type": type, "base_y": item_base_y, "lbl_y": 1.55,
 		"state": "idle", "age": 0.0, "life": 3.6 + _rng.randf() * 1.6,
 		"spin": 0.6 + _rng.randf() * 0.5,
 	})
@@ -280,7 +309,7 @@ func spawn_box(world_pos: Vector3) -> void:
 	holder.add_child(label)
 
 	_drops.append({
-		"kind": "box", "holder": holder, "box": box, "label": label, "tier": tier,
+		"kind": "box", "holder": holder, "box": box, "label": label, "tier": tier, "lbl_y": 0.75,
 		"state": "box", "age": 0.0, "life": 1.5 + _rng.randf() * 0.5,
 		"spin": 1.1, "lock": box.get_meta("lock"),
 	})
@@ -315,6 +344,8 @@ func _update_drops(dt: float) -> void:
 				_pop_box(d)
 				_free_entry(d)
 				_drops.remove_at(i)
+			else:
+				_arbitrate_label(d, float(d["lbl_y"]))
 			i -= 1
 			continue
 
@@ -334,6 +365,7 @@ func _update_drops(dt: float) -> void:
 			if age >= float(d["life"]):
 				d["state"] = "collect"
 				d["age"] = 0.0
+			_arbitrate_label(d, float(d["lbl_y"]))
 		else:
 			# ---------- COLLECT / PICKUP POP ----------
 			var cdur := 0.6
@@ -355,7 +387,39 @@ func _update_drops(dt: float) -> void:
 			if k >= 1.0:
 				_free_entry(d)
 				_drops.remove_at(i)
+			else:
+				_arbitrate_label(d, 1.55 + ease * 0.9)
 		i -= 1
+
+
+## Slide a drop/box label vertically off any equal-or-higher-priority text (damage numbers, other
+## loot labels). `nat_y` is the label's natural LOCAL y for this frame; we reset to it first so the
+## nudge never accumulates, then re-apply only the screen-clearing delta. Purely positional — the
+## label's font/colour/size are untouched; it is only dimmed out when boxed in under a crit number.
+func _arbitrate_label(d: Dictionary, nat_y: float) -> void:
+	var arb: Node = _arbiter()
+	if arb == null or not arb.has_method("place"):
+		return
+	var label: Node3D = d.get("label", null)
+	if label == null or not is_instance_valid(label) or not label.has_meta("nm"):
+		return
+	var nm: Label3D = label.get_meta("nm")
+	label.position.y = nat_y
+	var wb: Vector3 = label.global_position
+	var ext: Vector2 = arb.half_extent(nm.pixel_size, nm.font_size, nm.text.length())
+	# The "RARITY TYPE" sub-line sits well below the name, so extend the keep-out down past it (a
+	# rect sized to the name alone let its own sub-line land on a damage number — see shot_04).
+	var half_h: float = ext.y
+	var ty: Label3D = label.get_meta("ty") if label.has_meta("ty") else null
+	if ty != null:
+		var ty_ext: Vector2 = arb.half_extent(ty.pixel_size, ty.font_size, ty.text.length())
+		var pxw: float = arb.px_per_world(wb)
+		var drop_px: float = absf(wb.y - ty.global_position.y) * pxw
+		half_h = maxf(half_h, drop_px + ty_ext.y)
+	var out: Dictionary = arb.place(label.get_instance_id(), wb, ext.x, half_h, 2)
+	label.position.y = nat_y + ((out["pos"] as Vector3).y - wb.y)
+	if bool(out.get("hidden", false)):
+		_set_label_alpha(label, 0.0)
 
 
 func _update_box(d: Dictionary, dt: float) -> void:

@@ -20,6 +20,11 @@ extends Node
 ## Everything is POOLED and reused: software Vulkan is slow, and allocating meshes/particles
 ## per hit would both hitch and leak. Nothing is ever left running.
 
+# The shared screen-space text arbiter (damage numbers register their keep-out rects here so loot
+# labels and nameplates slide clear of them). Preloaded so any module can create the single shared
+# instance; guarded everywhere so a missing arbiter just restores the old un-coordinated behaviour.
+const TextArbiter := preload("res://scripts/modules/text_arbiter.gd")
+
 # ---------------------------------------------------------------------------- damage types
 enum DmgType { PHYSICAL, CRIT, AETHER, BLOCKED }
 
@@ -138,6 +143,34 @@ func setup(g) -> void:
 		g.enemy_killed.connect(_on_enemy_killed)
 
 	_demo = bool(g.is_capture) if "is_capture" in g else false
+
+	_ensure_arbiter()
+
+
+## The shared text arbiter is a single node stashed on game.modules; whichever text module runs
+## first creates it. Combat loads first, so this is usually where it is born — but loot.gd and
+## enemies.gd mirror this guarded lazy-create so none of the three depends on the others existing.
+func _ensure_arbiter() -> Node:
+	if game == null or not ("modules" in game):
+		return null
+	var a = game.modules.get("text_arbiter", null)
+	if a != null and is_instance_valid(a):
+		return a
+	a = TextArbiter.new()
+	a.name = "TextArbiter"
+	game.add_child(a)
+	if a.has_method("setup"):
+		a.setup(game)
+	game.modules["text_arbiter"] = a
+	return a
+
+
+func _arbiter() -> Node:
+	if game and "modules" in game:
+		var a = game.modules.get("text_arbiter", null)
+		if a != null and is_instance_valid(a):
+			return a
+	return null
 
 
 func _hero() -> Vector3:
@@ -425,6 +458,23 @@ func _update_texts(dt: float) -> void:
 		m.outline_modulate = Color(0, 0, 0, a)
 		sb.modulate = Color(sc.r, sc.g, sc.b, a * 0.92)
 		sb.outline_modulate = Color(0, 0, 0, a)
+
+		# Stamp this number's keep-out rect (top priority) so loot labels and nameplates slide clear
+		# of it. Only while it is bright enough to matter — a nearly-faded ghost must not shove other
+		# text around. Height is padded to cover the "CRITICAL!/PHYSICAL" sub-label sitting under it.
+		if a > 0.12:
+			var arb: Node = _arbiter()
+			if arb and arb.has_method("register"):
+				var ext: Vector2 = arb.half_extent(m.pixel_size, m.font_size, m.text.length())
+				# The sub-label ("CRITICAL!"/"PHYSICAL"…) hangs a good way BELOW the number, so the
+				# keep-out rect must reach down past it — a rect sized to the number alone let other
+				# text land on the sub. Extend the half-height to cover the sub's bottom edge.
+				var half_h: float = ext.y
+				var sb_ext: Vector2 = arb.half_extent(sb.pixel_size, sb.font_size, sb.text.length())
+				var pxw: float = arb.px_per_world(n.global_position)
+				var drop_px: float = absf(n.global_position.y - sb.global_position.y) * pxw
+				half_h = maxf(half_h, drop_px + sb_ext.y)
+				arb.register(n.get_instance_id(), n.global_position, ext.x, half_h, 3)
 		i -= 1
 
 

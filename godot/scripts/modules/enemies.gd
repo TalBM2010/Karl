@@ -16,6 +16,11 @@ const HERO_SCALE := 2.4          # Carl's height, to keep every creature in prop
 const BOSS_HEIGHT := 8.9         # ~3.7x Carl — he must DWARF him
 const SPIDER_COUNT := 5
 
+# Shared screen-space text arbiter (see text_arbiter.gd) — nameplates are the LOWEST priority text:
+# they yield to both damage numbers and loot labels. Guarded lazy-create so enemies never depends
+# on the combat/loot modules existing.
+const TextArbiter := preload("res://scripts/modules/text_arbiter.gd")
+
 var game: Node = null
 var donut: Node3D
 var boss: Node3D
@@ -73,7 +78,52 @@ func setup(g) -> void:
 		game.hero_attacked.connect(_on_hero_attacked)
 	if game.has_signal("enemy_killed"):
 		game.enemy_killed.connect(_on_enemy_killed)
+	_ensure_arbiter()
 	set_process(true)
+
+
+func _ensure_arbiter() -> Node:
+	if game == null or not ("modules" in game):
+		return null
+	var a = game.modules.get("text_arbiter", null)
+	if a != null and is_instance_valid(a):
+		return a
+	a = TextArbiter.new()
+	a.name = "TextArbiter"
+	game.add_child(a)
+	if a.has_method("setup"):
+		a.setup(game)
+	game.modules["text_arbiter"] = a
+	return a
+
+
+func _arbiter() -> Node:
+	if game and "modules" in game:
+		var a = game.modules.get("text_arbiter", null)
+		if a != null and is_instance_valid(a):
+			return a
+	return null
+
+
+## Slide a whole nameplate (label + health bar, as one unit) vertically off any equal-or-higher
+## priority text. The holder sits at local origin under the creature, so we reset it to y=0 first
+## (no accumulation), register the label's rect, then re-apply the screen-clearing delta divided by
+## the creature's scale (holder is a scaled child). Only dimmed out when boxed in under a crit.
+## Positional only — font, colour, size and the distance-fade the caller set are untouched.
+func _arbitrate_plate(holder: Node3D, label: Label3D, scl: float) -> void:
+	if holder == null or label == null:
+		return
+	var arb: Node = _arbiter()
+	if arb == null or not arb.has_method("place"):
+		return
+	holder.position.y = 0.0
+	var wb: Vector3 = label.global_position
+	var ext: Vector2 = arb.half_extent(label.pixel_size, label.font_size, label.text.length())
+	var out: Dictionary = arb.place(holder.get_instance_id(), wb, ext.x, ext.y * 1.2, 1)
+	var s: float = scl if absf(scl) > 0.0001 else 1.0
+	holder.position.y = ((out["pos"] as Vector3).y - wb.y) / s
+	if bool(out.get("hidden", false)):
+		holder.visible = false
 
 # ================================================================= materials
 func _materials() -> void:
@@ -918,6 +968,12 @@ func _tick_donut(delta: float, hero: Vector3) -> void:
 		if gp:
 			head.global_transform = Transform3D(Basis(Vector3.UP, donut.rotation.y), gp.global_position)
 
+	# keep Donut's nameplate from landing under a damage number / loot label at screen-centre
+	if donut.has_meta("plate"):
+		var dh: Node3D = donut.get_meta("plate")
+		if dh.visible and dh.has_meta("label"):
+			_arbitrate_plate(dh, dh.get_meta("label"), donut.scale.y)
+
 func _tick_spiders(delta: float, hero: Vector3) -> void:
 	# Self-driven liveliness so captures always show a hit-reaction and a death dissolve even
 	# though the demo director never actually strikes a real spider (contract signals aside).
@@ -1023,6 +1079,7 @@ func _tick_spiders(delta: float, hero: Vector3) -> void:
 				var pl: Label3D = holder.get_meta("label")
 				var bc: Color = holder.get_meta("base_col")
 				pl.modulate = Color(bc.r, bc.g, bc.b, a)
+				_arbitrate_plate(holder, pl, n.scale.y)
 
 		# ---- body pose: idle bob + wind-up crouch (rear up) + strike (lunge forward) + flinch recoil
 		var bob: float = sin(_t * 5.0 + float(s["phase"])) * 0.04
