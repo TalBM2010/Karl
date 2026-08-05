@@ -1,14 +1,14 @@
 {
-  "updated": "2026-08-05 09:40 UTC",
+  "updated": "2026-08-05 09:50 UTC",
   "wave": 8,
-  "rounds": 15,
-  "overall": 9.5,
-  "engine": "GODOT 4.3 (Forward+) \u2014 Wave 8 landed, cohering",
-  "note": "Wave 8 pushed the gameplay pieces: the Crystal Depths FLOOR went from a flat plane to cracked, cobbled, mineral-veined cavern rock with grounded debris + contact shadows; the arachnids read as distinct menacing crystal spiders with wind-ups/flinch; and the Juicer now reads as a legibly MUSCLED red hulk instead of a dark slab. Composite-verified clean. A whole-game cohesion agent is now fixing a damage-number overlap and balancing the (busier) frame.",
+  "rounds": 16,
+  "overall": 9.6,
+  "engine": "GODOT 4.3 (Forward+) \u2014 Wave 8 cohered & cold-verified",
+  "note": "Wave 8 cohered. The floor now reads as cracked mineral-veined rock with grounded debris; the Juicer as a muscled hulk with his red telegraph ring (Frame A); arachnids as distinct menacing crystal spiders. A whole-game cohesion pass fixed a damage-number overlap (a vertical-lane system so wide PHYSICAL/CRITICAL numbers never stack on the boss cam) and dialled back arachnid glow that was washing the crystal field. Proven from a COLD cache (wipe .godot -> reimport -> render) so a fresh clone works.",
   "latestShots": [
     {
       "path": "captures/web/_w8_boss.jpg",
-      "cap": "WAVE 8 \u2014 the Juicer now reads as a muscled red hulk (was a dark slab); deeper mineral-veined floor; 294,890 CRITICAL!"
+      "cap": "COHERED (Frame A) \u2014 the Juicer hulk + red telegraph ring; 175,764 CRITICAL! now cleanly LANED above 58,679 PHYSICAL (was stacked)"
     },
     {
       "path": "captures/web/_w8_floor.jpg",
@@ -52,9 +52,9 @@
     },
     {
       "name": "Godot combat VFX & damage numbers",
-      "status": "building",
-      "score": 8.6,
-      "note": "dust + swing arcs + hit flash added for weight; cohesion is fixing a case where two big numbers (PHYSICAL + CRITICAL) overlapped"
+      "status": "winning",
+      "score": 8.7,
+      "note": "dust + swing arcs + hit flash for weight (no additive white-clip); damage numbers now vertical-laned so PHYSICAL + CRITICAL never stack on the boss cam"
     },
     {
       "name": "Godot characters \u2014 Carl / Donut / arachnids",
@@ -82,6 +82,12 @@
     }
   ],
   "log": [
+    {
+      "t": "09:50",
+      "tag": "COHESION \u2713",
+      "c": "#1a4a2f",
+      "msg": "Wave 8 cohered + COLD-VERIFIED. Fixed the boss-cam damage-number stacking with a vertical-lane system (root cause: ~85px horizontal slots vs ~250px 7-digit numbers) \u2014 verified 175,764 CRITICAL! now sits cleanly above 58,679 PHYSICAL. Dialled back arachnid core/eye glow so 5 spiders stop washing the crystal field. Handled a two-writer collision on combat.gd (the impact pass + the number fix) \u2014 confirmed the final file carries BOTH. Then wiped the whole .godot cache and reimported from source: renders clean, disproving a warm-cache-only warning, so a fresh clone works. Overall 9.5 -> 9.6. Named next gap: a shared text arbiter so loot labels + nameplates also lane against damage numbers."
+    },
     {
       "t": "09:40",
       "tag": "WAVE 8 \u2713",
