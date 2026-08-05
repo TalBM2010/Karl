@@ -1,26 +1,26 @@
 {
-  "updated": "2026-08-05 09:50 UTC",
+  "updated": "2026-08-05 10:30 UTC",
   "wave": 8,
-  "rounds": 16,
+  "rounds": 17,
   "overall": 9.6,
-  "engine": "GODOT 4.3 (Forward+) \u2014 Wave 8 cohered & cold-verified",
-  "note": "Wave 8 cohered. The floor now reads as cracked mineral-veined rock with grounded debris; the Juicer as a muscled hulk with his red telegraph ring (Frame A); arachnids as distinct menacing crystal spiders. A whole-game cohesion pass fixed a damage-number overlap (a vertical-lane system so wide PHYSICAL/CRITICAL numbers never stack on the boss cam) and dialled back arachnid glow that was washing the crystal field. Proven from a COLD cache (wipe .godot -> reimport -> render) so a fresh clone works.",
+  "engine": "GODOT 4.3 (Forward+) \u2014 in-container still-frame work converged",
+  "note": "A shared screen-space text arbiter now lanes damage numbers > loot labels > nameplates so floating text stops colliding on the boss cam. On STILLS the build sits ~9.6 vs the Diablo-IV bar across world, HUD, boss, hero, loot, floors, inventory/character and combat. The remaining distance to the true bar is the axes this sandbox can't measure or build: 60fps MOTION feel, bespoke high-fidelity character models, and audio \u2014 all gated on a GPU + external-service environment.",
   "latestShots": [
     {
-      "path": "captures/web/_w8_boss.jpg",
-      "cap": "COHERED (Frame A) \u2014 the Juicer hulk + red telegraph ring; 175,764 CRITICAL! now cleanly LANED above 58,679 PHYSICAL (was stacked)"
-    },
-    {
-      "path": "captures/web/_w8_floor.jpg",
-      "cap": "WAVE 8 \u2014 cracked/veined floor with grounded debris + distinct crystal-spider arachnids; loot box + Donut alongside"
+      "path": "captures/web/_final_boss.jpg",
+      "cap": "Frame A \u2014 the Juicer hulk + telegraph ring; loot label, 78,433 PHYSICAL, two golds and three nameplates ALL cleanly laned (text arbiter)"
     },
     {
       "path": "captures/web/_inventory.jpg",
-      "cap": "inventory (Frame C): real rigged 3D Carl, bold red heart-boxers, glowing cyan axe"
+      "cap": "Frame C \u2014 inventory: real rigged 3D Carl, bold red heart-boxers, glowing cyan axe, rarity grid, equipped stats"
     },
     {
       "path": "captures/web/_charsheet.jpg",
-      "cap": "character sheet (Frame D): OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
+      "cap": "Frame D \u2014 character sheet: OFFENSE/DEFENSE/UTILITY columns, paragon, play-time"
+    },
+    {
+      "path": "captures/web/_w8_floor.jpg",
+      "cap": "cracked mineral-veined floor + grounded debris + distinct crystal-spider arachnids"
     }
   ],
   "strip": [
@@ -54,7 +54,7 @@
       "name": "Godot combat VFX & damage numbers",
       "status": "winning",
       "score": 8.7,
-      "note": "dust + swing arcs + hit flash for weight (no additive white-clip); damage numbers now vertical-laned so PHYSICAL + CRITICAL never stack on the boss cam"
+      "note": "dust + swing arcs + hit flash; damage numbers vertical-laned AND a shared text arbiter lanes them against loot labels + nameplates so floating text never overlaps on the boss cam"
     },
     {
       "name": "Godot characters \u2014 Carl / Donut / arachnids",
@@ -82,6 +82,12 @@
     }
   ],
   "log": [
+    {
+      "t": "10:30",
+      "tag": "READABILITY \u2713",
+      "c": "#1a4a2f",
+      "msg": "Added a shared screen-space text arbiter (new modules/text_arbiter.gd, guarded/fault-isolated): damage numbers > loot labels > nameplates now lane against each OTHER, not just within their own system. The boss-cam crit that was the named gap now shows the loot label, the PHYSICAL number, two gold labels and three arachnid nameplates all cleanly separated. Verified in the repo composite (CAPTURE_OK, no parse errors), no label appearance changed. This converges the in-container still-frame work at ~9.6; the honest remaining distance to the Diablo-IV bar is motion feel, bespoke characters and audio \u2014 gated on a GPU/egress environment."
+    },
     {
       "t": "09:50",
       "tag": "COHESION \u2713",
