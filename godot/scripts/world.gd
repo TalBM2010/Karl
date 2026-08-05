@@ -41,6 +41,7 @@ func build() -> void:
 	_build_cavern_walls()
 	_build_rocks()
 	_build_crystals()
+	_build_debris()
 	_build_motes()
 
 # ---------------------------------------------------------------- environment / grade
@@ -225,40 +226,41 @@ func _build_ground() -> void:
 	plane.subdivide_width = 24
 	plane.subdivide_depth = 24
 
+	# One coherent set of maps baked from a SHARED crack topology: a broad stone swell carved by a
+	# cellular crack network (flagstone slabs), a finer secondary crack pass, and grain. The old
+	# ground stacked three independent noise textures (albedo / normal / roughness) that shared no
+	# structure, so the relief never lined up with the shading and read as a flat dark plane. Here
+	# the normal, the baked crack-AO in the albedo, the roughness (wet in the cracks) and the vein
+	# glow are all derived from the same heightfield, so a raking crystal light reads real cracked
+	# rock — ridges catch, valleys darken, water pools in the seams.
+	var maps := _floor_maps()
+
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.230, 0.252, 0.282)   # dark wet stone — bright enough to take a pool of crystal light
-	mat.albedo_texture = _noise_tex(0.014, 4, _ramp([0.0, 1.0], [Color(0.68, 0.72, 0.80), Color(1.0, 1.0, 1.0)]))
+	mat.albedo_color = Color(1, 1, 1)
+	mat.albedo_texture = maps["albedo"]
 
-	# Relief: broad, soft stone swell. The old version tiled a 5-octave noise 26x — that is what
-	# read as sandpaper/TV static. One low-frequency map at a large tile is enough.
-	var nrm := _noise_tex(0.038, 4, null)
-	nrm.as_normal_map = true
-	nrm.bump_strength = 2.2
 	mat.normal_enabled = true
-	mat.normal_texture = nrm
-	mat.normal_scale = 0.85
+	mat.normal_texture = maps["normal"]
+	mat.normal_scale = 1.35
 
-	# Second noise drives roughness -> wet patches and dry patches instead of one plastic sheen.
 	mat.roughness = 1.0
-	mat.roughness_texture = _noise_tex(0.032, 3, _ramp([0.0, 1.0], [Color(0.26, 0.26, 0.26), Color(0.88, 0.88, 0.88)]))
+	mat.roughness_texture = maps["rough"]
 	mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
-	mat.metallic = 0.16
-	mat.metallic_specular = 0.55
+	mat.metallic = 0.18
+	mat.metallic_specular = 0.5
 
-	# Faint mineral seams. Hand-rasterised rather than ramped noise: a colour ramp over a noise
-	# texture is guesswork about the noise's value distribution, and it blew the whole floor out.
-	# This is explicit — thin ridges where the noise crosses zero, patch-masked so most of the
-	# floor stays plain black rock.
+	# Faint mineral glow running ALONG the deep cracks (same topology as the relief), patch-masked
+	# so most seams stay dark rock and only a few veins catch the crystal hue.
 	mat.emission_enabled = true
 	mat.emission = Color(0.14, 0.50, 1.0)
-	mat.emission_energy_multiplier = 1.6
-	mat.emission_texture = _seam_texture()
-	# MULTIPLY, not the default ADD. With ADD, Godot emits `emission + texture`, i.e. the base
-	# colour glows across the ENTIRE surface and the texture only modulates on top — which turns
-	# the whole floor into one uniform blue light source. MULTIPLY is what makes a mask a mask.
+	mat.emission_energy_multiplier = 1.5
+	mat.emission_texture = maps["emission"]
+	# MULTIPLY, not the default ADD: ADD makes the base colour glow across the WHOLE surface and
+	# the mask only modulates on top — the "whole floor drowning in blue" failure. MULTIPLY keeps
+	# the mask a mask.
 	mat.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 
-	mat.uv1_scale = Vector3(11, 11, 1)   # ~22 m tile: never repeats inside the visible disc
+	mat.uv1_scale = Vector3(15, 15, 1)   # ~16 m tile: flagstones ~1.2 m, never obviously repeats
 
 	var mi := MeshInstance3D.new()
 	mi.mesh = plane
@@ -273,6 +275,117 @@ func _build_ground() -> void:
 	body.add_child(col)
 	body.collision_layer = 2
 	add_child(body)
+
+## Bakes the four floor maps from one shared heightfield so relief, shading, gloss and vein glow
+## all agree. Returns {albedo, normal, rough, emission} as ImageTextures.
+##
+## Topology: broad simplex swell (the gentle floor undulation) carved by a cellular crack network
+## (DISTANCE2_SUB is ~0 at cell boundaries -> those become the mortar lines between flagstones),
+## a finer secondary crack pass, plus high-freq grain for tooth. Normals come from finite
+## differences on the height, so the cracks are physically the relief — not a decal painted over
+## a flat plane.
+func _floor_maps() -> Dictionary:
+	var R := 512
+
+	var swell := FastNoiseLite.new()
+	swell.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	swell.frequency = 0.010
+	swell.fractal_octaves = 3
+	swell.seed = 7
+
+	var cell := FastNoiseLite.new()
+	cell.noise_type = FastNoiseLite.TYPE_CELLULAR
+	cell.frequency = 0.021
+	cell.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
+	cell.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	cell.cellular_jitter = 1.0
+	cell.seed = 23
+
+	var cell2 := FastNoiseLite.new()   # finer capillary cracks branching off the main mortar
+	cell2.noise_type = FastNoiseLite.TYPE_CELLULAR
+	cell2.frequency = 0.052
+	cell2.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
+	cell2.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	cell2.cellular_jitter = 1.0
+	cell2.seed = 51
+
+	var grain := FastNoiseLite.new()   # gentle tooth, NOT fine static — kept low so bright pools read as cobbled slabs, not sandpaper
+	grain.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	grain.frequency = 0.09
+	grain.seed = 99
+
+	var patch := FastNoiseLite.new()   # where the vein glow is allowed to show
+	patch.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	patch.frequency = 0.0065
+	patch.seed = 91
+
+	# Pass 1: height + crack strength.
+	var h := PackedFloat32Array()
+	h.resize(R * R)
+	var crk := PackedFloat32Array()
+	crk.resize(R * R)
+	for y in R:
+		for x in R:
+			var i := y * R + x
+			var sw: float = swell.get_noise_2d(float(x), float(y))                 # -1..1
+			var c1: float = cell.get_noise_2d(float(x), float(y))                  # ~0 at edges
+			var c2: float = cell2.get_noise_2d(float(x), float(y))
+			var cr1: float = pow(1.0 - clampf(c1 * 1.7, 0.0, 1.0), 2.2)            # 1 = deep crack
+			var cr2: float = pow(1.0 - clampf(c2 * 1.9, 0.0, 1.0), 2.8) * 0.55
+			var crack: float = clampf(cr1 + cr2, 0.0, 1.0)
+			var g: float = grain.get_noise_2d(float(x), float(y))
+			# Flat-topped flagstones: the swell + a light tooth make the slab face, the crack term
+			# carves narrow deep mortar lines between them. Small grain weight keeps the lit floor
+			# reading as cobbled rock instead of high-frequency speckle.
+			h[i] = 0.62 + 0.28 * sw + 0.032 * g - 0.90 * crack
+			crk[i] = crack
+
+	# Pass 2: derive normal + albedo(AO) + roughness + emission from the shared height.
+	var nimg := Image.create(R, R, false, Image.FORMAT_RGB8)
+	var aimg := Image.create(R, R, false, Image.FORMAT_RGB8)
+	var rimg := Image.create(R, R, false, Image.FORMAT_RGB8)
+	var eimg := Image.create(R, R, false, Image.FORMAT_RGB8)
+	var base_stone := Color(0.235, 0.256, 0.292)   # dark wet stone; AO drives it down in the seams
+	var nstr := 2.3                                  # height->normal gain
+	for y in R:
+		for x in R:
+			var i := y * R + x
+			var xl: float = h[y * R + (x - 1 + R) % R]
+			var xr: float = h[y * R + (x + 1) % R]
+			var yd: float = h[((y - 1 + R) % R) * R + x]
+			var yu: float = h[((y + 1) % R) * R + x]
+			var nx: float = (xl - xr) * nstr
+			var ny: float = (yd - yu) * nstr
+			var nz: float = 1.0
+			var inv: float = 1.0 / sqrt(nx * nx + ny * ny + nz * nz)
+			nimg.set_pixel(x, y, Color(nx * inv * 0.5 + 0.5, ny * inv * 0.5 + 0.5, nz * inv * 0.5 + 0.5))
+
+			var hv: float = h[i]
+			var crack: float = crk[i]
+			# Baked AO/relief tint: raised slabs read brighter, mortar seams go dark. This is what
+			# makes the floor read even in near-flat lighting where the normal alone is silent.
+			var ao: float = clampf(0.58 + 0.5 * hv, 0.28, 1.12) * (1.0 - 0.6 * crack)
+			var col: Color = base_stone * ao
+			aimg.set_pixel(x, y, col)
+
+			# Roughness: dry, matte on the raised stone; wetter/glossier down in the seams where
+			# water would pool, so the crystal omnis throw a thin specular streak along the cracks.
+			var rough: float = lerpf(0.52, 0.95, clampf(hv, 0.0, 1.0))
+			rough = lerpf(rough, 0.28, crack * 0.72)
+			rimg.set_pixel(x, y, Color(rough, rough, rough))
+
+			# Vein glow: only in the deepest cracks, and only inside patch regions, so it stays a
+			# scattering of lit seams instead of a glowing grid.
+			var pm: float = clampf(patch.get_noise_2d(float(x), float(y)) * 1.7 - 0.15, 0.0, 1.0)
+			var em: float = clampf(pow(crack, 1.7) * pm, 0.0, 1.0)
+			eimg.set_pixel(x, y, Color(em, em, em))
+
+	return {
+		"albedo": ImageTexture.create_from_image(aimg),
+		"normal": ImageTexture.create_from_image(nimg),
+		"rough": ImageTexture.create_from_image(rimg),
+		"emission": ImageTexture.create_from_image(eimg),
+	}
 
 ## Soft round speck for the dust motes — a bare quad reads as a hard square at any size.
 func _dot_texture() -> ImageTexture:
@@ -560,6 +673,110 @@ func _scatter(min_r: float, max_r: float) -> Vector3:
 		if absf(p.length() - HERO_RING) > 2.4:
 			return p
 	return Vector3(min_r + 3.0, 0, 0) + FIELD_BIAS
+
+# ---------------------------------------------------------------- grounded debris
+## Soft dark contact patch laid flat on the floor under a prop. The directional key throws a real
+## shadow, but at the camera's standoff a small prop's cast shadow is a few pixels; this blob is
+## what actually reads as "sitting ON the floor" the way a D4 prop does — an AO decal, not a
+## floating object. Shared material, one radial alpha texture.
+var _blob_mat: StandardMaterial3D
+func _blob_shadow(radius: float) -> MeshInstance3D:
+	if _blob_mat == null:
+		_blob_mat = StandardMaterial3D.new()
+		_blob_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_blob_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_blob_mat.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+		_blob_mat.albedo_color = Color(0.0, 0.004, 0.008, 0.62)
+		_blob_mat.albedo_texture = _dot_texture()   # radial: opaque centre -> transparent rim
+		_blob_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_blob_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		_blob_mat.disable_receive_shadows = true
+		_blob_mat.render_priority = 2   # draw over the floor emission so the seam glow doesn't punch through
+	var q := QuadMesh.new()
+	q.size = Vector2(radius * 2.0, radius * 2.0)
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = _blob_mat
+	mi.rotation_degrees = Vector3(-90, _rng.randf() * 360.0, 0)   # lay flat, facing up
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+## Scattered floor clutter — this is what turns an empty plane into an inhabited cavern floor.
+## Three kinds, all grounded with a blob contact shadow: broken crystal shards lying where they
+## fell (faintly lit, catching the crystal hue), rock rubble/chips, and bleached bone piles.
+func _build_debris() -> void:
+	var shard_hues := [Color(0.10, 0.42, 1.0), Color(0.06, 0.72, 1.0), Color(0.42, 0.16, 1.0), Color(0.62, 0.22, 0.72)]
+	var shard_energies := [1.1, 1.4, 1.7]
+
+	# Fallen crystal shards — lying on their side. Dimmer than the standing formations so they
+	# read as debris, not a second crystal field, but they still catch the eye and prove the floor
+	# is lit from within.
+	for i in 28:
+		var p := _scatter(3.5, 24.0)
+		var hue: Color = shard_hues[_rng.randi() % shard_hues.size()]
+		var energy: float = shard_energies[_rng.randi() % shard_energies.size()]
+		var l: float = _rng.randf_range(0.55, 1.5)
+		var rad: float = l * _rng.randf_range(0.15, 0.24)
+		var sides := 5 if _rng.randf() < 0.5 else 6
+		var mesh := _facet_mesh(sides, l, rad, 0.24, Vector2.ZERO, SHARD_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _crystal_material(hue, energy)
+		# Tip it onto its side and let it rest, half-buried, on the floor.
+		mi.rotation = Vector3(PI * 0.5 + _rng.randf_range(-0.28, 0.28), _rng.randf() * TAU, _rng.randf_range(-0.32, 0.32))
+		mi.position = p + Vector3(0, rad * 0.72, 0)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		add_child(mi)
+		var b := _blob_shadow(maxf(l * 0.42, rad * 1.6))
+		b.position = Vector3(p.x, 0.02, p.z)
+		add_child(b)
+
+	# Rock rubble / chips — the mining detritus between the formations. Small, dense, tumbled.
+	for i in 34:
+		var p := _scatter(3.0, 25.0)
+		var s: float = _rng.randf_range(0.18, 0.55)
+		var mesh := _facet_mesh(6, s * _rng.randf_range(0.4, 0.85), s, 0.44, Vector2.ZERO, BOULDER_PROFILE)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = _rock_mat
+		mi.position = p - Vector3(0, s * 0.16, 0)
+		mi.rotation = Vector3(_rng.randf_range(-0.4, 0.4), _rng.randf() * TAU, _rng.randf_range(-0.4, 0.4))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		add_child(mi)
+		if s > 0.3:
+			var b := _blob_shadow(s * 1.25)
+			b.position = Vector3(p.x, 0.02, p.z)
+			add_child(b)
+
+	# Bleached bone piles — a few scattered heaps of what the dungeon left behind.
+	var bone_mat := StandardMaterial3D.new()
+	bone_mat.albedo_color = Color(0.66, 0.64, 0.585)   # pale enough to catch the eye against dark rock
+	bone_mat.roughness = 0.72
+	bone_mat.metallic = 0.0
+	bone_mat.rim_enabled = true          # crystal light catching the pale bone
+	bone_mat.rim = 0.45
+	bone_mat.rim_tint = 0.3
+	for pile in 5:
+		var c := _scatter(5.0, 22.0)
+		var n := _rng.randi_range(3, 6)
+		for bi in n:
+			var bone := CapsuleMesh.new()
+			bone.radius = _rng.randf_range(0.045, 0.085)
+			bone.height = _rng.randf_range(0.5, 1.1)
+			bone.radial_segments = 6
+			bone.rings = 2
+			var mi := MeshInstance3D.new()
+			mi.mesh = bone
+			mi.material_override = bone_mat
+			var off := Vector2(_rng.randf_range(-0.6, 0.6), _rng.randf_range(-0.6, 0.6))
+			mi.position = c + Vector3(off.x, bone.radius * 0.9, off.y)
+			# Capsule long axis is +Y; tip it nearly flat so bones lie on the ground.
+			mi.rotation = Vector3(PI * 0.5 + _rng.randf_range(-0.25, 0.25), _rng.randf() * TAU, _rng.randf_range(-0.3, 0.3))
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			add_child(mi)
+		var b := _blob_shadow(0.9)
+		b.position = Vector3(c.x, 0.02, c.z)
+		add_child(b)
 
 # ---------------------------------------------------------------- crystals
 func _build_crystals() -> void:

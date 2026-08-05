@@ -38,7 +38,16 @@ const COL_BLOCK := Color(0.52, 0.57, 0.63)    # dull grey
 const COL_CYAN := Color(0.24, 0.82, 1.32)
 const COL_VIOLET := Color(0.38, 0.13, 1.18)
 const COL_GOLD := Color(1.02, 0.60, 0.21)
-const CLEAVE_COL := Color(0.34, 0.92, 1.42)   # the swing arc is the brightest transient
+const CLEAVE_COL := Color(0.34, 0.92, 1.42)   # the cleave ability arc
+
+# The per-swing axe arc — a crisp cyan-edged trace of the chop. Kept just under CLEAVE_COL so a
+# swing arc + a hit flash landing in the same frame still hold their hue instead of summing white.
+const SWING_COL := Color(0.40, 0.94, 1.46)
+
+# DUST is deliberately NOT additive: a muted, warm cavern grey drawn with ALPHA (MIX) blend, so it
+# grounds Carl and punctuates a heavy hit WITHOUT ever spending a coin of the additive-white budget
+# that the arbiter guards. It reads as kicked earth, not light.
+const COL_DUST := Color(0.46, 0.40, 0.33)
 
 const TEXT_LIFE := 1.15
 const MAX_TEXT := 3
@@ -75,6 +84,12 @@ var _whirl: Node3D = null
 var _whirl_t := 0.0
 var _whirl_d := 0.0
 
+# --- run dust (persistent emitter under Carl's feet) --------------------------------------
+var _run_dust: GPUParticles3D = null
+var _prev_hero := Vector3.ZERO
+var _speed := 0.0
+var _mesh_swing: ArrayMesh = null      # tight arc that traces the axe on a committed swing
+
 # --- camera shake ------------------------------------------------------------------------
 var _shake := 0.0
 var _shake_t := 0.0
@@ -110,6 +125,8 @@ func setup(g) -> void:
 	_build_resources()
 	_build_aura()
 	_build_whirlwind()
+	_build_run_dust()
+	_prev_hero = _hero()
 
 	# React to the rest of the game if/when it starts talking to us.
 	if g.has_signal("hero_attacked"):
@@ -135,6 +152,11 @@ func _face() -> float:
 #  SIGNAL HOOKS
 # ==========================================================================================
 func _on_hero_attacked(target_pos: Vector3, damage: int, crit: bool) -> void:
+	# The committed swing traces Carl's axe toward whatever he just hit.
+	var hp: Vector3 = _hero()
+	var to: Vector3 = target_pos - hp
+	var face: float = atan2(to.x, to.z) if to.length() > 0.05 else _face()
+	swing_arc(hp, face)
 	if crit:
 		spawn_damage(target_pos, damage, DmgType.CRIT)
 		heavy_impact(target_pos)
@@ -156,6 +178,7 @@ func _process(delta: float) -> void:
 	_big_lock = maxf(0.0, _big_lock - dt)
 	_update_texts(dt)
 	_update_effects(dt)
+	_update_run_dust(dt)
 	_update_aura(dt)
 	_update_whirlwind(dt)
 	_update_shake(dt)
@@ -177,6 +200,9 @@ func _demo_director(dt: float) -> void:
 		var ang: float = f + _rng.randf_range(-1.5, 1.5)
 		var rad: float = _rng.randf_range(1.3, 2.6)
 		var tp := hp + Vector3(sin(ang) * rad, 0.0, cos(ang) * rad)
+
+		# every blow follows through with an axe arc toward the target it lands on
+		swing_arc(hp, atan2(tp.x - hp.x, tp.z - hp.z))
 
 		match _hit_i % 8:
 			0:
@@ -402,17 +428,32 @@ func _commas(n: int) -> String:
 # ==========================================================================================
 #  2. IMPACT VFX
 # ==========================================================================================
-## Normal hit: sparks + a quick billboard flash.
+## Direction, in the XZ plane, from Carl toward an impact — the knockback push axis.
+func _push_dir(pos: Vector3) -> Vector3:
+	var d: Vector3 = pos - _hero()
+	d.y = 0.0
+	if d.length() < 0.05:
+		return Vector3(sin(_face()), 0.0, cos(_face()))
+	return d.normalized()
+
+
+## Normal hit: sparks + a crisp white hit-flash on the struck point + a directional knockback
+## streak + a small kick of dust at its feet.
 func hit_impact(pos: Vector3, tint: Color) -> void:
-	_sparks(pos + Vector3(0, 1.1, 0), tint, 1.0)
-	_flash(pos + Vector3(0, 1.1, 0), tint, 0.9, 0.26)
+	var dir: Vector3 = _push_dir(pos)
+	_sparks(pos + Vector3(0, 1.1, 0), tint, 0.85)
+	hit_flash(pos + Vector3(0, 1.05, 0), dir, false)
+	_dust_burst(Vector3(pos.x, 0.06, pos.z) + dir * 0.35, 0.7)
 
 
-## Crit / heavy hit: bigger sparks, a hot flash, an expanding ground shock ring, camera shake.
+## Crit / heavy hit: bigger sparks, a hot white flash, a stronger knockback streak, an expanding
+## ground shock ring, a burst of dust kicked up at the point of impact, and camera shake.
 func heavy_impact(pos: Vector3) -> void:
-	_sparks(pos + Vector3(0, 1.2, 0), Color(1.85, 0.95, 0.26), 1.45)
-	_flash(pos + Vector3(0, 1.2, 0), Color(1.10, 0.58, 0.17), 0.95, 0.26)
+	var dir: Vector3 = _push_dir(pos)
+	_sparks(pos + Vector3(0, 1.2, 0), Color(1.85, 0.95, 0.26), 1.35)
+	hit_flash(pos + Vector3(0, 1.15, 0), dir, true)
 	shock_ring(pos, Color(1.20, 0.54, 0.13), 0.7, 4.0, 0.50)
+	_dust_burst(Vector3(pos.x, 0.06, pos.z), 1.5)
 	shake(0.30, 0.40)
 
 
@@ -426,6 +467,7 @@ func death_burst(pos: Vector3) -> void:
 	_live.append({"n": p, "t": 0.0, "d": 1.5, "k": "shards", "kind": "particles"})
 	_flash(pos + Vector3(0, 1.0, 0), COL_VIOLET, 0.95, 0.30)
 	shock_ring(pos, COL_VIOLET, 0.5, 3.2, 0.55)
+	_dust_burst(Vector3(pos.x, 0.06, pos.z), 1.2)
 	shake(0.20, 0.32)
 
 
@@ -442,7 +484,7 @@ func _sparks(pos: Vector3, tint: Color, scale: float) -> void:
 	_live.append({"n": p, "t": 0.0, "d": 1.1, "k": "sparks", "kind": "particles"})
 
 
-func _flash(pos: Vector3, tint: Color, size: float, dur: float) -> void:
+func _flash(pos: Vector3, tint: Color, size: float, dur: float, peak: float = 0.30) -> void:
 	var n: Node3D = _acquire("flash", Callable(self, "_make_flash"))
 	n.position = pos
 	n.visible = true
@@ -451,7 +493,31 @@ func _flash(pos: Vector3, tint: Color, size: float, dur: float) -> void:
 	mat.albedo_color = Color(tint.r, tint.g, tint.b, 1.0)
 	var lt: OmniLight3D = n.get_child(1)
 	lt.light_color = Color(clamp(tint.r, 0, 1), clamp(tint.g, 0, 1), clamp(tint.b, 0, 1))
-	_live.append({"n": n, "t": 0.0, "d": dur, "k": "flash", "kind": "flash", "size": size})
+	_live.append({"n": n, "t": 0.0, "d": dur, "k": "flash", "kind": "flash", "size": size, "peak": peak})
+
+
+## HIT FLASH — the brief white/additive pop on the enemy Carl just struck, plus a short
+## directional streak reading as the knockback impulse. Both persist ~0.4s (with an exp-decay
+## envelope) so they are still bright enough to LAND in a 1–8fps capture instead of vanishing
+## between frames, yet localized enough to punctuate the frame rather than wash it.
+func hit_flash(pos: Vector3, dir: Vector3, hot: bool) -> void:
+	if hot:
+		_flash(pos, Color(1.65, 1.30, 0.72), 1.05, 0.46, 0.46)
+	else:
+		_flash(pos, Color(1.30, 1.48, 1.66), 0.82, 0.40, 0.40)
+	_streak(pos, dir, hot)
+
+
+## A short additive smear shot along the knockback axis away from Carl.
+func _streak(pos: Vector3, dir: Vector3, hot: bool) -> void:
+	var mi: MeshInstance3D = _acquire("streak", Callable(self, "_make_streak_quad"))
+	mi.visible = true
+	var mat: StandardMaterial3D = mi.material_override
+	var tint: Color = Color(1.55, 1.02, 0.44) if hot else Color(0.86, 1.24, 1.58)
+	mat.albedo_color = Color(tint.r, tint.g, tint.b, 0.0)
+	var yaw: float = atan2(dir.x, dir.z)
+	_live.append({"n": mi, "t": 0.0, "d": 0.34 if hot else 0.30, "k": "streak", "kind": "streak",
+		"base": pos, "dir": dir, "yaw": yaw, "tint": tint, "hot": hot})
 
 
 ## An expanding, fading radial ring lying on the ground.
@@ -464,6 +530,36 @@ func shock_ring(pos: Vector3, tint: Color, r0: float, r1: float, dur: float) -> 
 	mat.albedo_color = Color(tint.r, tint.g, tint.b, 1.0)
 	_live.append({"n": mi, "t": 0.0, "d": dur, "k": "ring", "kind": "ring",
 		"r0": r0, "r1": r1, "tint": tint})
+
+
+## SWING ARC — a crisp cyan-edged crescent that traces Carl's axe through a committed swing and
+## then fades. Fires on every real hit (NOT an ability, so it does NOT claim the big-effect lock):
+## it is small, tight to the axe and short-lived, the follow-through that makes a chop read as
+## weighty. It sits at the hero, spatially clear of the hit flash out on the target, so the two
+## additive transients never overlap into a white blob.
+func swing_arc(pos: Vector3, facing: float) -> void:
+	var mi: MeshInstance3D = _acquire("swing", Callable(self, "_make_swing"))
+	mi.position = pos + Vector3(0, 1.05, 0)
+	mi.visible = true
+	var mat: StandardMaterial3D = mi.material_override
+	mat.albedo_color = Color(SWING_COL.r, SWING_COL.g, SWING_COL.b, 0.0)
+	_live.append({"n": mi, "t": 0.0, "d": 0.42, "k": "swing", "kind": "swing", "face": facing})
+
+
+## A one-shot burst of ground dust. `scale` drives how far and how much is kicked up — a light
+## scuff on a normal hit, a real cloud at the point of a heavy blow.
+func _dust_burst(pos: Vector3, scale: float) -> void:
+	var p: GPUParticles3D = _acquire("dust", Callable(self, "_make_dust"))
+	p.position = pos
+	p.visible = true
+	var pm: ParticleProcessMaterial = p.process_material
+	pm.initial_velocity_min = 1.1 * scale
+	pm.initial_velocity_max = 3.0 * scale
+	pm.scale_min = 0.30 * scale
+	pm.scale_max = 0.85 * scale
+	p.emitting = true
+	p.restart()
+	_live.append({"n": p, "t": 0.0, "d": 0.9, "k": "dust", "kind": "particles"})
 
 # ==========================================================================================
 #  3. ABILITY VFX
@@ -576,9 +672,32 @@ func _update_effects(dt: float) -> void:
 				mi2.scale = Vector3(s, s, s)
 				var fa: float = pow(1.0 - k, 2.0)
 				var fm: StandardMaterial3D = mi2.material_override
-				fm.albedo_color.a = fa * 0.30
+				fm.albedo_color.a = fa * float(e.get("peak", 0.30))
 				var lt: OmniLight3D = n.get_child(1)
 				lt.light_energy = 1.4 * fa
+			"swing":
+				# the crescent sweeps through the chop while it stretches and fades. Tighter and
+				# faster than the cleave ability so it reads as a single axe stroke, not a spell.
+				var sf: float = e["face"]
+				n.rotation = Vector3(-0.34, sf - 0.72 + 1.55 * k, 0.0)
+				var sc: float = 0.80 + 0.32 * pow(k, 0.6)
+				n.scale = Vector3(sc, 1.0, sc)
+				var sa: float = sin(clamp(k, 0.0, 1.0) * PI)
+				sa = pow(sa, 0.55) * 0.58
+				var sm: StandardMaterial3D = (n as MeshInstance3D).material_override
+				sm.albedo_color = Color(SWING_COL.r, SWING_COL.g, SWING_COL.b, sa)
+			"streak":
+				# a short skid smear shot away from Carl: stretches out along the push axis and
+				# fades fast, a directional cue that still lands legibly in a slow capture.
+				var dir: Vector3 = e["dir"]
+				var ln: float = lerp(0.7, 1.9, pow(k, 0.5))
+				n.rotation = Vector3(0.0, float(e["yaw"]), 0.0)
+				n.scale = Vector3(0.5, 1.0, ln)
+				n.position = (e["base"] as Vector3) + dir * ln * 0.55
+				var sta: float = pow(1.0 - k, 1.7) * (0.5 if bool(e["hot"]) else 0.42)
+				var tint: Color = e["tint"]
+				var stm: StandardMaterial3D = (n as MeshInstance3D).material_override
+				stm.albedo_color = Color(tint.r, tint.g, tint.b, sta)
 			"cleave":
 				# the crescent sweeps through the swing arc while it stretches and fades
 				var face: float = e["face"]
@@ -752,6 +871,57 @@ func _update_whirlwind(dt: float) -> void:
 			mat.albedo_color.a = a * float(mi.get_meta("base_a", 0.7))
 	if _whirl_t >= _whirl_d:
 		_whirl.visible = false
+
+# ==========================================================================================
+#  RUN DUST  (a low ground puff that follows Carl's feet while he moves)
+# ==========================================================================================
+## A persistent, low-velocity dust emitter kicked up only while Carl is actually running. Alpha
+## (MIX) blended in a warm cavern grey — off the additive budget entirely — so it grounds the run
+## without ever nudging the frame toward white.
+func _build_run_dust() -> void:
+	_run_dust = GPUParticles3D.new()
+	_run_dust.amount = 16
+	_run_dust.lifetime = 0.85
+	_run_dust.one_shot = false
+	_run_dust.explosiveness = 0.0
+	_run_dust.local_coords = false
+	_run_dust.draw_pass_1 = _mesh_quad
+	_run_dust.material_override = _dust_particle_mat(Color(COL_DUST.r, COL_DUST.g, COL_DUST.b, 0.55))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.34
+	pm.direction = Vector3(0, 0.35, 0)
+	pm.spread = 40.0
+	pm.initial_velocity_min = 0.35
+	pm.initial_velocity_max = 1.0
+	pm.gravity = Vector3(0, 0.25, 0)          # dust drifts up and settles, never falls hard
+	pm.damping_min = 0.6
+	pm.damping_max = 1.4
+	pm.scale_min = 0.35
+	pm.scale_max = 0.8
+	pm.scale_curve = _grow_curve()            # each puff expands as it thins out
+	pm.alpha_curve = _dust_alpha_curve()
+	pm.color = Color(1, 1, 1, 1)
+	_run_dust.process_material = pm
+	_run_dust.position = _prev_hero + Vector3(0, 0.05, 0)
+	_run_dust.emitting = false
+	root.add_child(_run_dust)
+
+
+func _update_run_dust(dt: float) -> void:
+	if _run_dust == null:
+		return
+	var hp: Vector3 = _hero()
+	var inst: float = 0.0
+	if dt > 0.0001:
+		inst = (hp - _prev_hero).length() / dt
+	_prev_hero = hp
+	# smooth so a single jittery lavapipe delta can't flicker the emitter on and off
+	_speed = lerpf(_speed, inst, 0.35)
+	_run_dust.position = Vector3(hp.x, 0.05, hp.z)
+	var moving: bool = _speed > 0.7 and _speed < 40.0   # upper guard rejects teleport spikes
+	if _run_dust.emitting != moving:
+		_run_dust.emitting = moving
 
 # ==========================================================================================
 #  4. CAMERA SHAKE  (offset-only, always decays back to exact zero)
@@ -948,6 +1118,58 @@ func _make_crescent() -> MeshInstance3D:
 	return mi
 
 
+func _make_swing() -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = _mesh_swing
+	mi.material_override = _add_mat(Color(1, 1, 1, 1))
+	root.add_child(mi)
+	return mi
+
+
+func _make_streak_quad() -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(0.7, 2.0)
+	q.orientation = PlaneMesh.FACE_Y     # lies on the ground plane; long axis is local Z
+	mi.mesh = q
+	var m := _add_mat(Color(1, 1, 1, 1))
+	m.albedo_texture = _tex_streak
+	mi.material_override = m
+	root.add_child(mi)
+	return mi
+
+
+## One-shot ground dust for impacts. Alpha (MIX) blended so it reads as kicked earth and never
+## contributes to additive white — the same reason the run-dust emitter uses this material.
+func _make_dust() -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.amount = 14
+	p.lifetime = 0.85
+	p.one_shot = true
+	p.explosiveness = 0.85
+	p.local_coords = false
+	p.draw_pass_1 = _mesh_quad
+	p.material_override = _dust_particle_mat(Color(COL_DUST.r, COL_DUST.g, COL_DUST.b, 0.6))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.22
+	pm.direction = Vector3(0, 0.4, 0)
+	pm.spread = 95.0
+	pm.initial_velocity_min = 1.1
+	pm.initial_velocity_max = 3.0
+	pm.gravity = Vector3(0, -1.1, 0)
+	pm.damping_min = 0.8
+	pm.damping_max = 2.0
+	pm.scale_min = 0.30
+	pm.scale_max = 0.85
+	pm.scale_curve = _grow_curve()
+	pm.alpha_curve = _dust_alpha_curve()
+	pm.color = Color(1, 1, 1, 1)
+	p.process_material = pm
+	root.add_child(p)
+	return p
+
+
 func _make_rune() -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var q := QuadMesh.new()
@@ -1001,6 +1223,8 @@ func _build_resources() -> void:
 	_mesh_ring = _make_arc_mesh(0.80, 1.0, 360.0, 56, [0.0, 0.55, 1.0, 0.55, 0.0])
 	_mesh_ring_wide = _make_arc_mesh(0.52, 1.0, 360.0, 56, [0.0, 0.45, 0.85, 1.0, 0.30, 0.0])
 	_mesh_crescent = _make_arc_mesh(2.55, 3.95, 124.0, 34, [0.0, 0.30, 1.0, 0.45, 0.0])
+	# the swing arc: tighter to the axe (reach ~1.3-2.4), thinner, energy hard on the leading edge
+	_mesh_swing = _make_arc_mesh(1.30, 2.40, 152.0, 30, [0.0, 0.22, 0.7, 1.0, 0.35, 0.0])
 	_mesh_aura = _make_arc_mesh(0.74, 1.0, 360.0, 48, [0.0, 0.6, 1.0, 0.6, 0.0])
 	_mesh_quad = QuadMesh.new()
 	_mesh_quad.size = Vector2(1.0, 1.0)
@@ -1040,6 +1264,46 @@ func _particle_mat(col: Color) -> StandardMaterial3D:
 	m.vertex_color_use_as_albedo = true
 	m.render_priority = 5
 	return m
+
+
+## Dust material: unshaded, soft glow sprite, but ALPHA (MIX) blended rather than additive, so it
+## occludes like real dust and stays completely off the additive-white budget the arbiter guards.
+func _dust_particle_mat(col: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	m.disable_receive_shadows = true
+	m.albedo_texture = _tex_glow
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.billboard_keep_scale = true
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = col
+	m.render_priority = 2   # under the additive VFX so dust never veils a flash or number
+	return m
+
+
+func _grow_curve() -> CurveTexture:
+	var c := Curve.new()
+	c.add_point(Vector2(0.0, 0.55))
+	c.add_point(Vector2(1.0, 1.0))
+	var ct := CurveTexture.new()
+	ct.curve = c
+	return ct
+
+
+## Dust fades IN fast off the ground then feathers away — never a hard pop, never a lingering haze.
+func _dust_alpha_curve() -> CurveTexture:
+	var c := Curve.new()
+	c.add_point(Vector2(0.0, 0.0))
+	c.add_point(Vector2(0.18, 1.0))
+	c.add_point(Vector2(0.55, 0.7))
+	c.add_point(Vector2(1.0, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = c
+	return ct
 
 
 func _fade_curve() -> CurveTexture:
